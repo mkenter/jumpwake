@@ -1,12 +1,7 @@
-import clsx from 'clsx';
-import { motion, useReducedMotion } from 'motion/react';
-import { useState } from 'react';
 import { INITIAL_SCENARIO } from '../../data/initialScenario';
 import styles from './AppShell.module.css';
 
 export function AppShell() {
-  const [isAboutOpen, setIsAboutOpen] = useState(false);
-  const reduceMotion = useReducedMotion();
   const { subsector, ship } = INITIAL_SCENARIO;
 
   return (
@@ -45,33 +40,6 @@ export function AppShell() {
             </div>
           </dl>
         </section>
-        <div className={styles.about}>
-          <button
-            type="button"
-            className={clsx(
-              styles.aboutButton,
-              isAboutOpen && styles.isExpanded,
-            )}
-            aria-expanded={isAboutOpen}
-            aria-controls="build-details"
-            onClick={() => setIsAboutOpen((open) => !open)}
-          >
-            About this build{' '}
-            <span aria-hidden="true">{isAboutOpen ? '−' : '+'}</span>
-          </button>
-          <motion.div
-            id="build-details"
-            hidden={!isAboutOpen}
-            initial={false}
-            animate={{ opacity: isAboutOpen ? 1 : 0 }}
-            transition={{ duration: reduceMotion ? 0 : 0.16 }}
-          >
-            <p className={styles.buildDetails}>
-              This is the application foundation. The subsector map, route
-              calculation, and per-stop itinerary are still to come.
-            </p>
-          </motion.div>
-        </div>
       </main>
       <footer className={styles.footer}>
         Built for the journey at your table.

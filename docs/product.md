@@ -9,8 +9,11 @@ at the table.
 - Classic Traveller-compatible conventions using the original Cepheus Engine SRD
   as the intended rules reference; see [rules.md](rules.md) for verification status.
 - One 8 × 10 subsector containing authored, fictional star systems.
-- One fixed 200-ton Jump-3 ship with fuel scoops.
-- Routes minimizing total **purchased fuel cost**, with deterministic tie-breaking.
+- One fixed 200-ton Jump-3 ship with fuel scoops and 60 tons allocated to jump
+  fuel, initially full.
+- Routes minimizing total **purchased fuel cost**, breaking ties by fewest jumps,
+  then shortest total distance, with deterministic results.
+- Routes account for available fuel, refueling opportunities, and jump constraints.
 - A visual route and readable per-stop itinerary showing fuel decisions and costs.
 - A static client-side application, with no accounts or backend services.
 
@@ -18,11 +21,12 @@ Current capabilities are documented in the [README](../README.md).
 
 ## Open functional decisions
 
-- Define starting fuel, required final reserves, and how to present unreachable
-  destinations and stops with no usable fuel.
-- Decide how time and risk affect route eligibility and the itinerary.
-- Define the complete tie-breaking order after purchased cost, and test it explicitly.
-  Do not silently substitute shortest distance or fewest jumps as the objective.
+- Decide required final reserves and how to present unreachable destinations and
+  stops with no usable fuel.
+- Define a stable result order when cost, jump count, and total distance all tie.
+
+These are agreed prototype requirements. Mechanics and deliberate simplifications
+are tracked separately in [rules.md](rules.md).
 
 ## Explicitly deferred
 

@@ -42,8 +42,8 @@ and functional decisions, and `docs/rules.md` for rules references and open ques
 - For documentation-only changes, check formatting and any changed local links.
   Rely on GitHub Actions for full formatting, lint, type, test, and build checks;
   do not routinely run the full suite locally. Report what was checked and any blockers.
-- Keep changes focused. Add dependencies only for concrete needs; do not introduce
-  Tailwind, component/state/routing frameworks, or speculative infrastructure.
+- Keep changes focused. New dependencies or frameworks need a demonstrated need
+  and should fit the existing architecture; avoid speculative infrastructure.
 - Keep documentation factual and concise. Update the relevant existing document
   when behavior or decisions change; avoid duplication and speculative guidance.
 - Do not publish, change repository visibility, or deploy without an explicit request.
