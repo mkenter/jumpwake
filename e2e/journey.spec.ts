@@ -1,4 +1,39 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+async function expectClearRouteLabels(page: Page) {
+  const overlaps = await page.evaluate<string[]>(`(() => {
+    const labels = [...document.querySelectorAll('[data-world-label]')].map(label => ({
+      id: label.getAttribute('data-world-label'), bounds: label.getBoundingClientRect(),
+    }));
+    const samples = [];
+    for (const path of document.querySelectorAll('[data-route-leg]')) {
+      const length = path.getTotalLength();
+      const matrix = path.getScreenCTM();
+      const steps = Math.ceil(length / 2);
+      for (let i = 0; i <= steps; i++) {
+        const point = path.getPointAtLength(length * i / steps);
+        samples.push(new DOMPoint(point.x, point.y).matrixTransform(matrix));
+      }
+    }
+    for (const arrow of document.querySelectorAll('[data-route-arrow]')) {
+      const matrix = arrow.getScreenCTM();
+      for (let i = 1; i < arrow.points.numberOfItems; i++) {
+        const start = arrow.points.getItem(i - 1);
+        const end = arrow.points.getItem(i);
+        for (let step = 0; step <= 4; step++) {
+          samples.push(new DOMPoint(start.x + (end.x - start.x) * step / 4,
+            start.y + (end.y - start.y) * step / 4).matrixTransform(matrix));
+        }
+      }
+    }
+    const padding = document.querySelector('svg[role="group"]').getScreenCTM().a * 2;
+    return labels.filter(({ bounds }) => samples.some(point =>
+      point.x > bounds.left - padding && point.x < bounds.right + padding &&
+      point.y > bounds.top - padding && point.y < bounds.bottom + padding
+    )).map(label => label.id);
+  })()`);
+  expect(overlaps).toEqual([]);
+}
+
 for (const [width, height] of [
   [1440, 900],
   [1280, 800],
@@ -59,7 +94,7 @@ for (const [width, height] of [
     await expect(status).toContainText('7 pc');
     await expect(status).toContainText('Cr0');
     const chart = page.getByRole('region', { name: 'Subsector chart' });
-    const chartSvg = chart.locator('svg');
+    const chartSvg = chart.locator('svg[role="group"]');
     if (width >= 900) {
       const chartBox = await chartSvg.boundingBox();
       const railBox = await page
@@ -118,6 +153,7 @@ for (const [width, height] of [
         svgBounds.x + svgBounds.width,
       );
     }
+    await expectClearRouteLabels(page);
     await capture('free-chart');
     if (width >= 900) {
       await chartWorld('Drift Lantern').hover();
@@ -180,13 +216,8 @@ for (const [width, height] of [
       .evaluateAll((nodes) => nodes.map((node) => node.id));
     expect(new Set(ids).size).toBe(ids.length);
     await switchView('Chart');
-    const routePoints = await page.locator('polyline').getAttribute('points');
-    expect(routePoints).not.toBeNull();
-    const vertices = routePoints!
-      .trim()
-      .split(/\s+/)
-      .map((point) => point.split(',').map(Number));
-    expect(vertices).toHaveLength(8);
+    const legs = page.locator('path[data-route-leg]');
+    await expect(legs).toHaveCount(7);
     const plottedWorlds = [
       'Aster Quay',
       'Drift Lantern',
@@ -197,18 +228,109 @@ for (const [width, height] of [
       'Serein',
       'Orison',
     ];
-    for (const [index, name] of plottedWorlds.entries()) {
-      const star = page
-        .getByRole('button', { name: new RegExp(`^Inspect ${name},`) })
-        .locator('circle')
-        .nth(1);
-      const center = await star.evaluate((element) => ({
-        x: Number(element.getAttribute('cx')),
-        y: Number(element.getAttribute('cy')),
-      }));
-      expect(vertices[index]![0]).toBeCloseTo(center.x, 5);
-      expect(vertices[index]![1]).toBeCloseTo(center.y, 5);
+    const plottedPoints: number[][][] = [];
+    for (let index = 0; index < 7; index++) {
+      const line = legs.nth(index);
+      const path = (await line.getAttribute('d'))!;
+      expect(path).toContain(' C ');
+      const coordinates = path
+        .replace(/[MC]/g, '')
+        .trim()
+        .split(/\s+/)
+        .map(Number);
+      const points = Array.from({ length: 4 }, (_, pointIndex) =>
+        coordinates.slice(pointIndex * 2, pointIndex * 2 + 2),
+      );
+      plottedPoints.push(points);
+      const head = (await chart
+        .locator('[data-route-arrow]')
+        .nth(index)
+        .getAttribute('points'))!
+        .trim()
+        .split(/\s+/)
+        .map((pair) => pair.split(',').map(Number));
+      expect(points.at(-1)).toEqual(head[1]);
+      expect(points).toHaveLength(4);
+      for (const [name, endpoint, arriving] of [
+        [plottedWorlds[index], points[0], false],
+        [plottedWorlds[index + 1], points.at(-1), true],
+      ] as const) {
+        const center = await page
+          .getByRole('button', { name: new RegExp(`^Inspect ${name},`) })
+          .locator('circle')
+          .nth(1)
+          .evaluate((element) => ({
+            x: Number(element.getAttribute('cx')),
+            y: Number(element.getAttribute('cy')),
+            radius: Number(element.getAttribute('r')),
+          }));
+        if (arriving) {
+          expect(
+            Math.hypot(endpoint![0]! - center.x, endpoint![1]! - center.y),
+          ).toBeCloseTo(center.radius + 1);
+        } else {
+          expect(endpoint![0]).toBeCloseTo(center.x, 5);
+          expect(endpoint![1]).toBeCloseTo(center.y, 5);
+        }
+      }
     }
+    const middle = (points: number[][]) => [
+      (points[0]![0]! +
+        3 * points[1]![0]! +
+        3 * points[2]![0]! +
+        points[3]![0]!) /
+        8,
+      (points[0]![1]! +
+        3 * points[1]![1]! +
+        3 * points[2]![1]! +
+        points[3]![1]!) /
+        8,
+    ];
+    const outward = middle(plottedPoints[4]!);
+    const returning = middle(plottedPoints[5]!);
+    // Compare across the shared sweep, not along it: the visible curves are
+    // trimmed at opposite markers, so their halfway parameters are staggered.
+    const edgeX = plottedPoints[5]![0]![0]! - plottedPoints[4]![0]![0]!;
+    const edgeY = plottedPoints[5]![0]![1]! - plottedPoints[4]![0]![1]!;
+    const separation = Math.abs(
+      (-(outward[0]! - returning[0]!) * edgeY +
+        (outward[1]! - returning[1]!) * edgeX) /
+        Math.hypot(edgeX, edgeY),
+    );
+    expect(separation).toBeGreaterThan(5);
+    expect(separation).toBeLessThan(10);
+    await expect(legs.nth(4)).toHaveAttribute('data-traversals', '2');
+    await expect(legs.nth(5)).toHaveAttribute('data-traversals', '2');
+    await expect(chart.locator('[data-route-arrow]')).toHaveCount(7);
+    expect(
+      await page.evaluate(
+        'getComputedStyle(document.querySelector("[data-route-arrow]")).fill',
+      ),
+    ).toBe('none');
+    expect(
+      await page.evaluate(
+        'parseFloat(getComputedStyle(document.querySelector("path[data-route-leg]")).strokeWidth)',
+      ),
+    ).toBeLessThan(2);
+    await page
+      .getByRole('navigation', { name: 'Planner navigation' })
+      .getByRole('button', { name: 'Chart', exact: true })
+      .click();
+    await expectClearRouteLabels(page);
+    const labelPositions = await chart
+      .locator('[data-world-label]')
+      .evaluateAll((nodes) =>
+        nodes.map((node) => node.getAttribute('transform')),
+      );
+    await chartWorld('Serein').hover();
+    expect(
+      await chart
+        .locator('[data-world-label]')
+        .evaluateAll((nodes) =>
+          nodes.map((node) => node.getAttribute('transform')),
+        ),
+    ).toEqual(labelPositions);
+    await chart.getByRole('heading').hover();
     await capture('paid-return-chart');
     await chartWorld('Last Ember').focus();
     await page.keyboard.press('Space');

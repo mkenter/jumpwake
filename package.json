@@ -10,6 +10,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "build:logos": "node scripts/export-logos.mjs",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
