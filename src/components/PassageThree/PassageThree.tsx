@@ -110,7 +110,12 @@ export function PassageThree() {
       <header className={styles.header}>
         <div className={styles.brandLockup}>
           <a className={styles.brand} href="/" aria-label="Jumpwake home">
-            <JumpwakeLogo variant="compact" decorative />
+            <JumpwakeLogo decorative className={styles.fullLogo} />
+            <JumpwakeLogo
+              variant="compact"
+              decorative
+              className={styles.compactLogo}
+            />
           </a>
           <span className={styles.wordmark}>
             JUMPWAKE<small>PASSENGER NAVIGATION SERVICE</small>

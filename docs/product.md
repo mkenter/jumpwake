@@ -37,12 +37,12 @@ vertical projection is applied consistently to hex geometry, world positions,
 route vertices and hit targets, while glyphs retain their proportions. This is
 presentation spacing, not a change to engine coordinates or parsec distances.
 
-The masthead pairs the compact framed J/W monogram with the existing Jumpwake
-wordmark in the 72px navigation header. The full Art Deco identity adds mirrored
-plum-and-gold corner curves, horizontal gold stars, and tapered rays. It is
-available as a standalone SVG for a future letterhead treatment; the application
-uses the compact variant at all widths. Both share the same outlined serif
-lettering and frame. The planner and navigation retain their existing behavior.
+The 72px navigation header pairs the full Art Deco J/W identity with the existing
+Jumpwake wordmark at widths of 960px and above. The mark is 256px wide on desktop
+and 216px on laptop, with mirrored plum-and-gold corner curves, horizontal gold
+stars, and tapered rays. Below 960px, the header uses the compact framed monogram.
+Both variants share the same outlined serif lettering and frame and are also
+available as standalone SVGs. The planner and navigation retain their existing behavior.
 
 One authoritative Ember Reach dataset supplies both the engine and chart. Its
 15 authored systems include dry worlds, paid ports, gas giants and isolated Last

@@ -44,9 +44,12 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  width: 80px;
+  width: 256px;
   min-height: 44px;
   text-decoration: none;
+}
+.brand .compactLogo {
+  display: none;
 }
 .wordmark {
   font-size: 11px;
@@ -371,6 +374,25 @@
   .mobileTabs button[aria-pressed='true'] {
     color: var(--ink);
     border-bottom-color: var(--accent);
+  }
+}
+@media (min-width: 960px) and (max-width: 1279px) {
+  .brand {
+    width: 216px;
+  }
+  .wordmark small {
+    display: none;
+  }
+}
+@media (max-width: 959px) {
+  .brand {
+    width: 80px;
+  }
+  .brand .fullLogo {
+    display: none;
+  }
+  .brand .compactLogo {
+    display: block;
   }
 }
 @media (min-width: 701px) and (max-width: 1100px) {

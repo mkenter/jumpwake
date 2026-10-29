@@ -74,8 +74,8 @@ The logo's hand-drawn SVG geometry lives in
 `npm run build:logos` and commit the regenerated standalone assets in
 `public/brand/`. The exports use fixed palette colors and outlined lettering;
 they need no fonts, stylesheets, or external resources. The full identity uses
-mirrored Art Deco wings; the navigation uses the compact framed monogram. The
-ivory badge background is intentionally opaque. Run
+mirrored Art Deco wings; the navigation uses it from 960px and the compact framed
+monogram at narrower widths. The ivory badge background is intentionally opaque. Run
 `npm run test:e2e -- e2e/logo.spec.ts` to regenerate the standalone, letterhead,
 and application previews in ignored `test-results/` directories.
 

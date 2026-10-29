@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-for (const width of [1440, 1024, 960, 959, 701, 700, 390, 320]) {
+for (const width of [
+  1440, 1280, 1279, 1101, 1100, 1024, 960, 959, 701, 700, 390, 320,
+]) {
   test(`brand stays legible and clear of masthead content at ${width}px`, async ({
     page,
   }, testInfo) => {
@@ -11,9 +13,15 @@ for (const width of [1440, 1024, 960, 959, 701, 700, 390, 320]) {
     await expect(brand).toHaveAttribute('href', '/');
     await expect(brand.locator('svg:visible')).toHaveCount(1);
     const logo = brand.locator('svg:visible');
-    await expect(logo).toHaveAttribute('viewBox', '370 24 580 248');
+    const full = width >= 960;
+    await expect(logo).toHaveAttribute(
+      'viewBox',
+      full ? '0 0 1320 296' : '370 24 580 248',
+    );
     const bounds = await brand.boundingBox();
-    expect(bounds!.width).toBe(width > 700 ? 80 : 72);
+    expect(bounds!.width).toBe(
+      full ? (width >= 1280 ? 256 : 216) : width > 700 ? 80 : 72,
+    );
     expect(bounds!.height).toBeGreaterThanOrEqual(44);
     const layout = await page.evaluate<{
       height: number;
@@ -23,7 +31,7 @@ for (const width of [1440, 1024, 960, 959, 701, 700, 390, 320]) {
       const header = document.querySelector('header');
       const items = [...header.children]
         .filter((item) => getComputedStyle(item).display !== 'none')
-        .map((item) => item.getBoundingClientRect());
+        .map((item, index) => (index === 0 ? item.lastElementChild : item).getBoundingClientRect());
       return {
         height: header.getBoundingClientRect().height,
         gaps: items.slice(1).map((item, index) => item.left - items[index].right),
