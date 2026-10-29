@@ -107,23 +107,23 @@ export function PassageThree() {
         Skip to planner
       </a>
       <header className={styles.header}>
-        <a className={styles.brand} href="/" aria-label="Jumpwake home">
-          J / W
-        </a>
-        <span>
-          JUMPWAKE<small>PASSENGER NAVIGATION SERVICE</small>
-        </span>
+        <div className={styles.brandLockup}>
+          <a className={styles.brand} href="/" aria-label="Jumpwake home">
+            J / W
+          </a>
+          <span className={styles.wordmark}>
+            JUMPWAKE<small>PASSENGER NAVIGATION SERVICE</small>
+          </span>
+        </div>
+        <h1 className={styles.title}>
+          The stars, <em>within reach.</em>
+        </h1>
         <span className={styles.issue}>
           Ember Reach
           <span>Chart Nº 001</span>
         </span>
       </header>
       <main id="main-content" tabIndex={-1}>
-        <div className={styles.title}>
-          <h1>
-            The stars, <em>within reach.</em>
-          </h1>
-        </div>
         <div className={styles.endpoints}>
           <label>
             From
