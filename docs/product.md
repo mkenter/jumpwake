@@ -19,14 +19,13 @@ at the table.
 
 Current capabilities are documented in the [README](../README.md).
 
-## Open functional decisions
+## Routing decisions
 
-- Decide required final reserves and how to present unreachable destinations and
-  stops with no usable fuel.
-- Define a stable result order when cost, jump count, and total distance all tie.
-
-These are agreed prototype requirements. Mechanics and deliberate simplifications
-are tracked separately in [rules.md](rules.md).
+Arrival requires no reserve. Unreachable routes have an explicit result status.
+After cost, jumps, and distance, ties use the ordered next-system IDs and
+then departure fuel amounts. The engine and authored fixture are implemented;
+map rendering and itinerary UI remain deferred. Mechanics, algorithm details,
+and deliberate simplifications are tracked in [rules.md](rules.md).
 
 ## Explicitly deferred
 

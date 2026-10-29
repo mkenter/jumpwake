@@ -5,10 +5,17 @@ tabletop RPGs. A focused play aid for plotting journeys across a hex subsector.
 
 ## Current status
 
-Application foundation only: a responsive shell, provisional CSS tokens, one
-pure hex-distance utility, and development checks. Map rendering, fuel accounting,
-route optimization, and itineraries are not implemented. No setting data or SRD
-text is included.
+Responsive application shell plus an independently testable routing engine with
+Traveller subsector geometry, jump-fuel accounting, fuel purchasing and scooping,
+and deterministic cost optimization. The original Ember Reach fixture exercises
+free refueling detours and unreachable destinations. Map rendering and itinerary
+UI are not implemented. No SRD text is included.
+
+The engine exports `createRouter`, coordinate conversions, and fuel rules through
+`src/engine/index.ts`. Construct a router from `EMBER_REACH` in
+`src/data/emberReach.ts`, then call `findRoute('aster', 'cinder')`. See
+[the rules document](docs/rules.md#routing-implementation) for the algorithm,
+complexity, assumptions, and result contract.
 
 ## Development
 
