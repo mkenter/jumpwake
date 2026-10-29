@@ -12,7 +12,7 @@ import { PassageChart } from './PassageChart';
 import { WorldInspection, type Inspection } from './WorldInspection';
 import { createRouter } from '../../engine';
 import { EMBER_REACH } from '../../data/emberReach';
-import { JumpwakeLogo } from '../JumpwakeLogo';
+import { Masthead } from './Masthead';
 import styles from './PassageThree.module.css';
 
 const router = createRouter(EMBER_REACH);
@@ -87,6 +87,22 @@ export function PassageThree() {
     );
   }
 
+  function navigate(target: 'passage' | 'chart' | 'manifest') {
+    if (target !== 'passage') setView(target);
+    requestAnimationFrame(() => {
+      const section = document.getElementById(
+        target === 'passage' ? 'journey-controls' : `passage-${target}`,
+      );
+      if (target === 'passage')
+        originRef.current?.focus({ preventScroll: true });
+      else section?.focus({ preventScroll: true });
+      section?.scrollIntoView({
+        block: 'start',
+        behavior: reduced ? 'instant' : 'smooth',
+      });
+    });
+  }
+
   const inspectionPanel = inspection ? (
     <WorldInspection
       inspection={inspection}
@@ -107,72 +123,61 @@ export function PassageThree() {
       <a className={styles.skipLink} href="#main-content">
         Skip to planner
       </a>
-      <header className={styles.header}>
-        <div className={styles.brandLockup}>
-          <a className={styles.brand} href="/" aria-label="Jumpwake home">
-            <JumpwakeLogo decorative className={styles.fullLogo} />
-            <JumpwakeLogo
-              variant="compact"
-              decorative
-              className={styles.compactLogo}
-            />
-          </a>
-          <span className={styles.wordmark}>
-            JUMPWAKE<small>PASSENGER NAVIGATION SERVICE</small>
-          </span>
-        </div>
-        <h1 className={styles.title}>
-          The stars, <em>within reach.</em>
-        </h1>
-        <span className={styles.issue}>
-          Ember Reach
-          <span>Chart Nº 001</span>
-        </span>
-      </header>
+      <Masthead compact={compact} view={view} onNavigate={navigate} />
       <main id="main-content" tabIndex={-1}>
-        <div className={styles.endpoints}>
-          <label>
-            From
-            <select
-              ref={originRef}
-              aria-label="Origin"
-              value={origin}
-              onChange={(event) => {
-                setOrigin(event.target.value);
-                setInspection(null);
-                setHighlight(null);
-              }}
-            >
-              <option value="">Choose origin</option>
-              {worlds.map((world) => (
-                <option key={world.id} value={world.id}>
-                  {world.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <span aria-hidden="true">⟶</span>
-          <label>
-            To
-            <select
-              ref={destinationRef}
-              aria-label="Destination"
-              value={destination}
-              onChange={(event) => {
-                setDestination(event.target.value);
-                setInspection(null);
-                setHighlight(null);
-              }}
-            >
-              <option value="">Choose world</option>
-              {worlds.map((world) => (
-                <option key={world.id} value={world.id}>
-                  {world.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <section
+          id="journey-controls"
+          className={styles.journeyControls}
+          aria-label="Journey controls"
+        >
+          <div className={styles.controlHeading}>
+            <span>Plot your passage</span>
+            <span>Jump–3 · 200 t · fuel scoops</span>
+          </div>
+          <div className={styles.endpoints}>
+            <label>
+              From
+              <select
+                ref={originRef}
+                aria-label="Origin"
+                value={origin}
+                onChange={(event) => {
+                  setOrigin(event.target.value);
+                  setInspection(null);
+                  setHighlight(null);
+                }}
+              >
+                <option value="">Choose origin</option>
+                {worlds.map((world) => (
+                  <option key={world.id} value={world.id}>
+                    {world.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span aria-hidden="true">⟶</span>
+            <label>
+              To
+              <select
+                ref={destinationRef}
+                aria-label="Destination"
+                value={destination}
+                onChange={(event) => {
+                  setDestination(event.target.value);
+                  setInspection(null);
+                  setHighlight(null);
+                }}
+              >
+                <option value="">Choose world</option>
+                {worlds.map((world) => (
+                  <option key={world.id} value={world.id}>
+                    {world.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </section>
         <div className={styles.journeySummary}>
           <p role="status" aria-atomic="true">
             {passage ? (
@@ -206,35 +211,25 @@ export function PassageThree() {
             </button>
           )}
         </div>
-        <div
-          className={styles.mobileTabs}
-          role="group"
-          aria-label="Planner view"
-        >
-          <button
-            aria-pressed={view === 'chart'}
-            aria-controls="passage-chart"
-            onClick={() => setView('chart')}
-          >
-            Chart
-          </button>
-          <button
-            aria-pressed={view === 'manifest'}
-            aria-controls="passage-manifest"
-            onClick={() => setView('manifest')}
-          >
-            Manifest{passage ? ` · ${stops.length} events` : ''}
-          </button>
-        </div>
         <div className={styles.workspace}>
           <section
             id="passage-chart"
+            tabIndex={-1}
             className={styles.mapPanel}
             aria-label="Subsector chart"
             hidden={compact && view !== 'chart'}
           >
             <div className={styles.mapHeading}>
               <h2>
+                <svg
+                  className={styles.compass}
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="7" />
+                  <path d="M12 1L15 9L23 12L15 15L12 23L9 15L1 12L9 9Z" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg>
                 Ember Reach <span>field chart</span>
               </h2>
               <span>8 × 10 hexes · 1 pc per hex</span>
@@ -259,6 +254,8 @@ export function PassageThree() {
           <div className={styles.rightColumn}>
             <section
               id="passage-manifest"
+              className={styles.manifest}
+              tabIndex={-1}
               aria-label="Passage manifest"
               hidden={compact && view !== 'manifest'}
             >

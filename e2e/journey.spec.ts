@@ -59,7 +59,7 @@ for (const [width, height] of [
     await expect(status).toContainText('7 pc');
     await expect(status).toContainText('Cr0');
     const chart = page.getByRole('region', { name: 'Subsector chart' });
-    const chartSvg = chart.locator('svg');
+    const chartSvg = chart.locator('svg[role="group"]');
     if (width >= 900) {
       const chartBox = await chartSvg.boundingBox();
       const railBox = await page

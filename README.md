@@ -5,7 +5,7 @@ tabletop RPGs. A focused play aid for plotting journeys across a hex subsector.
 
 ## Current status
 
-The v0.1 working demo runs at `/`, using Design 3's pale chart and passage
+The v0.1 working demo runs at `/`, using the Art Deco letterhead, pale chart and passage
 manifest. Choose any two worlds in the fictional Ember Reach subsector to
 calculate a route with jump-fuel accounting, fuel purchasing and scooping, and
 deterministic cost optimization. Inspect worlds independently of endpoint
@@ -74,10 +74,10 @@ The logo's hand-drawn SVG geometry lives in
 `npm run build:logos` and commit the regenerated standalone assets in
 `public/brand/`. The exports use fixed palette colors and outlined lettering;
 they need no fonts, stylesheets, or external resources. The full identity uses
-mirrored Art Deco wings; the navigation uses it from 960px and the compact framed
-monogram at narrower widths. The ivory badge background is intentionally opaque. Run
-`npm run test:e2e -- e2e/logo.spec.ts` to regenerate the standalone, letterhead,
-and application previews in ignored `test-results/` directories.
+mirrored Art Deco wings in the letterhead; the sticky navigation uses the compact
+framed monogram. The ivory badge background is intentionally opaque. Run
+`npm run test:e2e -- e2e/logo.spec.ts e2e/deco.spec.ts` to regenerate standalone
+logo and application previews in ignored `test-results/` directories.
 
 ## Licensing status
 

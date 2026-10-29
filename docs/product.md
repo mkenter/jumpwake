@@ -37,12 +37,25 @@ vertical projection is applied consistently to hex geometry, world positions,
 route vertices and hit targets, while glyphs retain their proportions. This is
 presentation spacing, not a change to engine coordinates or parsec distances.
 
-The 72px navigation header pairs the full Art Deco J/W identity with the existing
-Jumpwake wordmark at widths of 960px and above. The mark is 256px wide on desktop
-and 216px on laptop, with mirrored plum-and-gold corner curves, horizontal gold
-stars, and tapered rays. Below 960px, the header uses the compact framed monogram.
-Both variants share the same outlined serif lettering and frame and are also
-available as standalone SVGs. The planner and navigation retain their existing behavior.
+The ceremonial masthead pairs the unchanged ornamental J/W SVG with a centered
+serif Jumpwake wordmark and Navigation Service subtitle. A single navigation row
+sticks at the viewport top as the letterhead scrolls away, revealing the compact
+J/W badge with a short fade and slide. IntersectionObserver tracks the letterhead;
+its space stays in the document, so the transition does not move planner content.
+The inactive home link is inert and hidden from assistive technology, with focus
+transferred to its visible counterpart when necessary. Reduced motion removes
+animation and smooth scrolling.
+
+Passage focuses the origin field; Chart and Manifest focus and scroll to their
+sections, switching the mobile view below 900px. These are the existing planner
+views, with one shared navigation row in both header states. Targets have an 80px
+scroll margin to clear the sticky row. The initial mobile composition keeps the
+full logo at a readable 272–320px width and reduces the wordmark and spacing.
+
+Fine gold rules, beveled instrument frames, a chart-heading compass and numbered
+manifest events extend the stationery theme. The chart remains open and its
+geometry, labels and hit targets retain their existing sizes. No speculative
+navigation destinations, route parameters or world data are introduced.
 
 One authoritative Ember Reach dataset supplies both the engine and chart. Its
 15 authored systems include dry worlds, paid ports, gas giants and isolated Last
