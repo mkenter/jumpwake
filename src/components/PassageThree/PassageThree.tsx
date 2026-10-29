@@ -44,6 +44,10 @@ export function PassageThree() {
   );
   const passage = result?.status === 'reachable' ? result : null;
   const stops = useMemo(() => (result ? routeStops(result) : []), [result]);
+  const chartStops = useMemo(
+    () => stops.filter((stop) => stop.kind !== 'refuel'),
+    [stops],
+  );
   const cost = passage?.totalCostCredits ?? 0;
   const distance = passage?.totalDistance ?? 0;
   const status = !origin
@@ -235,7 +239,8 @@ export function PassageThree() {
               <span>8 × 10 hexes · 1 pc per hex</span>
             </div>
             <PassageChart
-              stops={stops.filter((stop) => stop.kind !== 'refuel')}
+              stops={chartStops}
+              visible={!compact || view === 'chart'}
               selected={inspection?.id ?? null}
               highlight={highlight}
               origin={origin}

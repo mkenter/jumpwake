@@ -63,13 +63,19 @@ Ember. Orison, Serein and Ilex extend the original engine fixture to exercise
 purchases and return visits. Useful descriptions from the design study are
 retained as world context; fuel availability comes from engine rules.
 
+World names and addresses use measured SVG text bounds to choose nearby positions
+clear of routes, arrowheads, other labels and world markers. Placements stay
+inside the chart and remain stable during hover and inspection. Measurements
+refresh when the mobile chart becomes visible or its label sizes change.
+
 The summary uses the engine's totals. The chart follows jumps in order, including
-return legs. Each jump follows a shallow Bézier arc inspired by vintage travel
-maps. Repeated world-to-world legs use neighboring arcs along the same sweep.
-Each thin plum line terminates at an open arrowhead on the destination marker's
-edge. Lane spacing is presentation-only and does not
-change coordinates or distances. Each world remains one inspection target. The
-manifest shows a departure entry followed by every jump and refueling event in chronological order.
+return legs. Bézier curves take their headings from neighboring jumps so the
+journey flows through successive stops. Repeated world-to-world legs reuse the
+same sweep in neighboring lanes. Each thin plum line terminates at an open
+arrowhead on the destination marker's edge. Lane spacing is presentation-only and
+does not change coordinates or distances. Each world remains one inspection
+target. The manifest shows a departure entry followed by every jump and refueling
+event in chronological order.
 Each entry has a unique occurrence ID, including repeated visits to the same
 world. World highlighting links all its events, and inspection lists those event
 numbers. Desktop world inspection sits below the manifest heading, ahead of its events,

@@ -1,7 +1,7 @@
 import { point, worldById, type Stop } from '../presentation';
 
-type ChartPoint = { x: number; y: number };
-type RouteLeg = {
+export type ChartPoint = { x: number; y: number };
+export type RouteLeg = {
   id: string;
   from: string;
   to: string;
@@ -10,7 +10,7 @@ type RouteLeg = {
   arrow: ChartPoint[];
 };
 
-const laneSpacing = 7;
+const laneSpacing = 8;
 const mix = (a: ChartPoint, b: ChartPoint, t: number): ChartPoint => ({
   x: a.x + (b.x - a.x) * t,
   y: a.y + (b.y - a.y) * t,
@@ -44,6 +44,42 @@ function trimArrival(
   return split((low + high) / 2);
 }
 
+// A shared tangent through a stop lets consecutive jumps read as one journey.
+// At a reversal, retain the leg's own heading rather than making a zero tangent.
+function tangent(a: ChartPoint, b: ChartPoint, heading: ChartPoint) {
+  const aLength = Math.hypot(a.x, a.y);
+  const bLength = Math.hypot(b.x, b.y);
+  const x = a.x / aLength + b.x / bLength;
+  const y = a.y / aLength + b.y / bLength;
+  const length = Math.hypot(x, y);
+  return length < 0.1
+    ? {
+        x: heading.x / Math.hypot(heading.x, heading.y),
+        y: heading.y / Math.hypot(heading.x, heading.y),
+      }
+    : { x: x / length, y: y / length };
+}
+
+export function curvePoint(
+  points: readonly ChartPoint[],
+  t: number,
+): ChartPoint {
+  const [a, b, c, d] = points;
+  const s = 1 - t;
+  return {
+    x:
+      s ** 3 * a!.x +
+      3 * s * s * t * b!.x +
+      3 * s * t * t * c!.x +
+      t ** 3 * d!.x,
+    y:
+      s ** 3 * a!.y +
+      3 * s * s * t * b!.y +
+      3 * s * t * t * c!.y +
+      t ** 3 * d!.y,
+  };
+}
+
 export function routeLegs(
   stops: readonly Stop[],
   markerRadius = 7,
@@ -57,12 +93,17 @@ export function routeLegs(
         id: stop.id,
         from: from.world,
         to: stop.world,
+        index,
         edge: JSON.stringify([from.world, stop.world].sort()),
       },
     ];
   });
   const totals = new Map<string, number>();
   const used = new Map<string, number>();
+  const sweeps = new Map<
+    string,
+    { from: string; first: ChartPoint; second: ChartPoint }
+  >();
   for (const leg of legs) totals.set(leg.edge, (totals.get(leg.edge) ?? 0) + 1);
 
   return legs.map((leg) => {
@@ -75,19 +116,65 @@ export function routeLegs(
     const dx = end.x - start.x;
     const dy = end.y - start.y;
     const length = Math.hypot(dx, dy);
-    const ux = dx / length;
-    const uy = dy / length;
-    // Lift horizontal/diagonal journeys upward and vertical ones leftward.
-    // This normal is identical in both travel directions, keeping return lanes
-    // on the same sweep rather than mirroring them into a different route.
     const orientation = dx > 0 || (dx === 0 && dy < 0) ? -1 : 1;
-    const nx = -uy * orientation;
-    const ny = ux * orientation;
-    const bend = Math.min(length * 0.2, 44) + offset / 0.75;
+    const nx = (-dy / length) * orientation;
+    const ny = (dx / length) * orientation;
+    let sweep = sweeps.get(leg.edge);
+    if (!sweep) {
+      const previous = visits[leg.index - 1];
+      const next = visits[leg.index + 2];
+      const prev = previous ? point(worldById(previous.world)) : start;
+      const following = next ? point(worldById(next.world)) : end;
+      const heading = { x: dx, y: dy };
+      const departure =
+        previous && previous.world !== leg.from
+          ? tangent(
+              { x: start.x - prev.x, y: start.y - prev.y },
+              heading,
+              heading,
+            )
+          : { x: dx / length, y: dy / length };
+      const arrival =
+        next && next.world !== leg.to
+          ? tangent(
+              heading,
+              { x: following.x - end.x, y: following.y - end.y },
+              heading,
+            )
+          : { x: dx / length, y: dy / length };
+      const handle = Math.min(length / 3, 60);
+      const first = {
+        x: start.x + departure.x * handle,
+        y: start.y + departure.y * handle,
+      };
+      const second = {
+        x: end.x - arrival.x * handle,
+        y: end.y - arrival.y * handle,
+      };
+      // A single or fully collinear journey still gets a quiet cartographic bow.
+      if (
+        Math.abs((first.x - start.x) * dy - (first.y - start.y) * dx) < 0.01 &&
+        Math.abs((second.x - start.x) * dy - (second.y - start.y) * dx) < 0.01
+      ) {
+        const bow = Math.min(length * 0.12, 24);
+        first.x += nx * bow;
+        first.y += ny * bow;
+        second.x += nx * bow;
+        second.y += ny * bow;
+      }
+      sweep = { from: leg.from, first, second };
+      sweeps.set(leg.edge, sweep);
+    }
+    // Retraced legs reuse the same sweep in reverse, with a separate lane.
+    const first = sweep.from === leg.from ? sweep.first : sweep.second;
+    const second = sweep.from === leg.from ? sweep.second : sweep.first;
     const points = trimArrival(
       start,
-      { x: start.x + dx / 3 + nx * bend, y: start.y + dy / 3 + ny * bend },
-      { x: end.x - dx / 3 + nx * bend, y: end.y - dy / 3 + ny * bend },
+      { x: first.x + (nx * offset) / 0.75, y: first.y + (ny * offset) / 0.75 },
+      {
+        x: second.x + (nx * offset) / 0.75,
+        y: second.y + (ny * offset) / 0.75,
+      },
       end,
       markerRadius + 1,
     );

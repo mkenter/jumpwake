@@ -38,13 +38,54 @@ describe('route chart lanes', () => {
       expect(
         dx * (tip!.y - approach.y) - dy * (tip!.x - approach.x),
       ).toBeCloseTo(0);
-      const control = leg.points[1]!;
+      const departure = leg.points[1]!;
+      const approachControl = leg.points[2]!;
       expect(
-        Math.abs(
-          (control.x - start.x) * (end.y - start.y) -
-            (control.y - start.y) * (end.x - start.x),
+        Math.max(
+          Math.abs(
+            (departure.x - start.x) * (end.y - start.y) -
+              (departure.y - start.y) * (end.x - start.x),
+          ),
+          Math.abs(
+            (approachControl.x - start.x) * (end.y - start.y) -
+              (approachControl.y - start.y) * (end.x - start.x),
+          ),
         ),
       ).toBeGreaterThan(1);
+    }
+  });
+
+  it('coordinates headings through successive stops without overshooting a reversal', () => {
+    const flowing = routeLegs(visits(['aster', 'drift', 'echo', 'kestrel']));
+    for (let i = 1; i < flowing.length; i++) {
+      const previous = flowing[i - 1]!;
+      const next = flowing[i]!;
+      const tip = previous.points[3]!;
+      const control = previous.points[2]!;
+      const start = next.points[0]!;
+      const departure = next.points[1]!;
+      const ax = tip.x - control.x;
+      const ay = tip.y - control.y;
+      const bx = departure.x - start.x;
+      const by = departure.y - start.y;
+      expect(
+        (ax * bx + ay * by) / (Math.hypot(ax, ay) * Math.hypot(bx, by)),
+      ).toBeGreaterThan(0.98);
+    }
+    for (const leg of routeLegs(
+      visits(['serein', 'ilex', 'serein', 'orison']),
+    )) {
+      const start = point(worldById(leg.from));
+      const end = point(worldById(leg.to));
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const length = Math.hypot(dx, dy);
+      for (const control of leg.points) {
+        const along =
+          ((control.x - start.x) * dx + (control.y - start.y) * dy) / length;
+        expect(along).toBeGreaterThanOrEqual(-1e-8);
+        expect(along).toBeLessThanOrEqual(length + 1e-8);
+      }
     }
   });
 

@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { motion, useReducedMotion } from 'motion/react';
 import { address, hexes, point, worlds, type Stop } from '../presentation';
 import { routeLegs } from './routeGeometry';
+import { placeWorldLabels, type LabelMetrics } from './labelLayout';
 import styles from './PassageChart.module.css';
 
 type Props = {
   stops: Stop[];
+  visible: boolean;
   selected: string | null;
   highlight: string | null;
   origin: string;
@@ -17,6 +19,7 @@ type Props = {
 
 export function PassageChart({
   stops,
+  visible,
   selected,
   highlight,
   origin,
@@ -35,9 +38,54 @@ export function PassageChart({
     return () => query.removeEventListener('change', update);
   }, []);
   const markerRadius = largeMarkers ? 11 : 7;
-  const legs = routeLegs(stops, markerRadius);
+  const legs = useMemo(
+    () => routeLegs(stops, markerRadius),
+    [stops, markerRadius],
+  );
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [metrics, setMetrics] = useState<Record<string, LabelMetrics>>({});
+  useLayoutEffect(() => {
+    if (!visible) return;
+    const measured: Record<string, LabelMetrics> = {};
+    for (const world of worlds) {
+      const group = svgRef.current?.querySelector(`[data-world="${world.id}"]`);
+      const name = group?.querySelector<SVGTextElement>('[data-label-name]');
+      const code = group?.querySelector<SVGTextElement>('[data-label-code]');
+      if (!name?.getBBox || !code?.getBBox) continue;
+      const a = name.getBBox();
+      const b = code.getBBox();
+      measured[world.id] = {
+        width: Math.max(a.width, b.width),
+        top: a.y,
+        bottom: b.y + b.height,
+      };
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Measure SVG glyphs before paint so label placement does not visibly jump.
+    setMetrics(measured);
+  }, [largeMarkers, origin, destination, visible]);
+  const labels = useMemo(
+    () =>
+      placeWorldLabels(
+        worlds.map((world) => ({
+          id: world.id,
+          ...point(world),
+          ...(metrics[world.id] ?? {
+            width: Math.max(
+              world.name.split(' ')[0]!.length * (largeMarkers ? 14 : 10),
+              60,
+            ),
+            top: largeMarkers ? -24 : -18,
+            bottom: largeMarkers ? 29 : 23,
+          }),
+        })),
+        legs,
+        markerRadius,
+      ),
+    [metrics, legs, markerRadius, largeMarkers],
+  );
   return (
     <svg
+      ref={svgRef}
       className={styles.chart}
       viewBox="-22 -18 650 800"
       role="group"
@@ -92,6 +140,7 @@ export function PassageChart({
       )}
       {worlds.map((world) => {
         const p = point(world);
+        const label = labels.get(world.id) ?? { x: p.x + 15, y: p.y - 11 };
         const index = stops.findIndex((stop) => stop.world === world.id);
         const endpoint =
           world.id === origin
@@ -145,12 +194,22 @@ export function PassageChart({
               cy={p.y}
               r={index >= 0 ? markerRadius : 3.5}
             />
-            <text className={styles.name} x={p.x + 15} y={p.y - 11}>
-              {world.name.split(' ')[0]}
-            </text>
-            <text className={styles.code} x={p.x + 15} y={p.y + 8}>
-              {endpoint ?? address(world)}
-            </text>
+            <g
+              data-world-label={world.id}
+              transform={`translate(${label.x} ${label.y})`}
+            >
+              <text data-label-name className={styles.name} x="0" y="0">
+                {world.name.split(' ')[0]}
+              </text>
+              <text
+                data-label-code
+                className={styles.code}
+                x="0"
+                y={largeMarkers ? 24 : 19}
+              >
+                {endpoint ?? address(world)}
+              </text>
+            </g>
           </g>
         );
       })}
