@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createRouter } from './routing';
 import type { RouteResult } from './routing';
 import type { StarSystem, Starport } from './fuelRules';
+import { displayDistance } from './geometry.test-support';
 import { EMBER_REACH } from '../data/emberReach';
 
 function system(
@@ -185,7 +186,7 @@ describe('fuel-aware routes', () => {
   });
 });
 
-// Independent Bellman–Ford oracle on one-column tiny networks. Uses 1-ton
+// Independent Bellman–Ford oracle on tiny display-grid networks. Uses 1-ton
 // refuel edges (not the production 20-ton combined refuel/jump transitions).
 function reference(systems: readonly StarSystem[], start: number, end: number) {
   type Score = [number, number, number];
@@ -208,15 +209,16 @@ function reference(systems: readonly StarSystem[], start: number, end: number) {
       for (let fuel = 0; fuel <= 60; fuel++) {
         const score = labels[i * 61 + fuel];
         if (!score) continue;
+        if (i === end) continue;
         const s = systems[i]!;
-        if (fuel < 60 && (s.gasGiant || s.starport === 'C'))
+        if (fuel < 60 && (s.gasGiant || 'ABCD'.includes(s.starport)))
           relax(i * 61 + fuel + 1, [
             score[0] + (s.gasGiant ? 0 : 100),
             score[1],
             score[2],
           ]);
         for (let j = 0; j < systems.length; j++) {
-          const distance = Math.abs(s.hex.row - systems[j]!.hex.row);
+          const distance = displayDistance(s.hex, systems[j]!.hex);
           if (distance >= 1 && distance <= 3 && fuel >= distance * 20)
             relax(j * 61 + fuel - distance * 20, [
               score[0],
@@ -257,46 +259,60 @@ it('matches an independent ton-resolution solver for all fuel assignments and en
   }
 });
 
+function expectBalanced(systems: readonly StarSystem[], result: RouteResult) {
+  if (result.status !== 'reachable') return;
+  const byId = new Map(systems.map((s) => [s.id, s]));
+  let fuel = 60;
+  let location = result.originId;
+  let cost = 0;
+  let distance = 0;
+  let jumps = 0;
+  for (const [i, event] of result.events.entries()) {
+    expect(location).not.toBe(result.destinationId);
+    expect(event.fuelBeforeTons).toBe(fuel);
+    if (event.kind === 'refuel') {
+      const stop = byId.get(location)!;
+      expect(event.systemId).toBe(location);
+      expect(event.tons).toBeGreaterThan(0);
+      expect(event.grade).toBe('unrefined');
+      expect(event.source).toBe(stop.gasGiant ? 'gas-giant' : 'starport');
+      expect(stop.gasGiant || 'ABCD'.includes(stop.starport)).toBe(true);
+      expect(event.creditsPerTon).toBe(stop.gasGiant ? 0 : 100);
+      expect(event.costCredits).toBe(event.tons * event.creditsPerTon);
+      expect(result.events[i + 1]?.kind).toBe('jump');
+      fuel += event.tons;
+      cost += event.costCredits;
+    } else {
+      expect(event.fromId).toBe(location);
+      expect(event.distance).toBe(
+        displayDistance(byId.get(location)!.hex, byId.get(event.toId)!.hex),
+      );
+      expect(event.distance).toBeGreaterThanOrEqual(1);
+      expect(event.distance).toBeLessThanOrEqual(3);
+      expect(event.fuelConsumedTons).toBe(event.distance * 20);
+      location = event.toId;
+      fuel -= event.fuelConsumedTons;
+      distance += event.distance;
+      jumps++;
+    }
+    expect(event.fuelAfterTons).toBe(fuel);
+    expect(fuel).toBeGreaterThanOrEqual(0);
+    expect(fuel).toBeLessThanOrEqual(60);
+  }
+  expect(location).toBe(result.destinationId);
+  expect([cost, jumps, distance, fuel]).toEqual([
+    result.totalCostCredits,
+    result.jumpCount,
+    result.totalDistance,
+    result.fuelRemainingTons,
+  ]);
+}
+
 it('keeps every fixture itinerary balanced without redundant refueling', () => {
   const router = createRouter(EMBER_REACH);
   for (const origin of EMBER_REACH)
-    for (const destination of EMBER_REACH) {
-      const result = router.findRoute(origin.id, destination.id);
-      if (result.status !== 'reachable') continue;
-      let fuel = 60;
-      let location = origin.id;
-      let cost = 0;
-      let distance = 0;
-      let jumps = 0;
-      for (const event of result.events) {
-        expect(event.fuelBeforeTons).toBe(fuel);
-        if (event.kind === 'refuel') {
-          expect(event.systemId).toBe(location);
-          expect(event.tons).toBeGreaterThan(0);
-          fuel += event.tons;
-          cost += event.costCredits;
-        } else {
-          expect(event.fromId).toBe(location);
-          expect(event.distance).toBeGreaterThanOrEqual(1);
-          expect(event.distance).toBeLessThanOrEqual(3);
-          location = event.toId;
-          fuel -= event.fuelConsumedTons;
-          distance += event.distance;
-          jumps++;
-        }
-        expect(event.fuelAfterTons).toBe(fuel);
-        expect(fuel).toBeGreaterThanOrEqual(0);
-        expect(fuel).toBeLessThanOrEqual(60);
-      }
-      expect(location).toBe(destination.id);
-      expect([cost, jumps, distance, fuel]).toEqual([
-        result.totalCostCredits,
-        result.jumpCount,
-        result.totalDistance,
-        result.fuelRemainingTons,
-      ]);
-      if (jumps) expect(result.events.at(-1)?.kind).toBe('jump');
-    }
+    for (const destination of EMBER_REACH)
+      expectBalanced(EMBER_REACH, router.findRoute(origin.id, destination.id));
 });
 
 it('handles repeated queries across a full 80-system subsector', () => {
@@ -314,4 +330,149 @@ it('handles repeated queries across a full 80-system subsector', () => {
     const id = systems[i]!.id;
     expect(router.findRoute('00', id).status).toBe('reachable');
   }
+});
+
+it('revisits a port with more fuel after a scooping detour to reduce purchases', () => {
+  const systems = [
+    system('s', 5),
+    system('b', 5, 'D', false, 4),
+    system('g', 6, 'X', true, 5),
+    system('t', 2, 'X', false, 4),
+  ];
+  const result = reached(createRouter(systems).findRoute('s', 't'));
+  expect(stops(result)).toEqual(['b', 'g', 'b', 't']);
+  expect(result).toMatchObject({
+    totalCostCredits: 4000,
+    jumpCount: 4,
+    totalDistance: 8,
+    fuelRemainingTons: 0,
+  });
+  expect(
+    result.events
+      .filter((e) => e.kind === 'refuel')
+      .map((e) => [e.systemId, e.tons, e.fuelBeforeTons, e.costCredits]),
+  ).toEqual([
+    ['b', 20, 0, 2000],
+    ['g', 60, 0, 0],
+    ['b', 20, 40, 2000],
+  ]);
+  expectBalanced(systems, result);
+  expect(reference(systems, 0, 3)).toEqual([4000, 4, 8]);
+});
+
+it.each([
+  [
+    [1, 1],
+    [2, 3],
+    [4, 2],
+    [5, 5],
+  ],
+  [
+    [5, 6],
+    [6, 8],
+    [8, 7],
+    [8, 10],
+  ],
+])(
+  'matches the ton-resolution oracle on multidimensional networks: %j',
+  (a, b, c, d) => {
+    const hexes = [a, b, c, d];
+    for (let mask = 0; mask < 81; mask++) {
+      let value = mask;
+      const systems = hexes.map(([column, row], i) => {
+        const facility = value % 3;
+        value = Math.floor(value / 3);
+        const starport =
+          facility === 0
+            ? i % 2
+              ? 'E'
+              : 'X'
+            : (['A', 'B', 'C', 'D'] as const)[i]!;
+        return system(String(i), row!, starport, facility === 2, column!);
+      });
+      const router = createRouter(systems);
+      const reversed = createRouter(systems.toReversed());
+      for (let start = 0; start < 4; start++)
+        for (let end = 0; end < 4; end++) {
+          const expected = reference(systems, start, end);
+          const result = router.findRoute(String(start), String(end));
+          expect(result.status).toBe(expected ? 'reachable' : 'unreachable');
+          if (result.status === 'reachable') {
+            expect([
+              result.totalCostCredits,
+              result.jumpCount,
+              result.totalDistance,
+            ]).toEqual(expected);
+            expectBalanced(systems, result);
+          }
+          expect(reversed.findRoute(String(start), String(end))).toEqual(
+            result,
+          );
+        }
+    }
+  },
+);
+
+it('breaks equal-cost purchase allocations by the earliest departure fuel', () => {
+  const systems = [
+    system('s', 1),
+    system('p', 4, 'B'),
+    system('q', 5, 'C'),
+    system('t', 8),
+  ];
+  const result = reached(createRouter(systems).findRoute('s', 't'));
+  expect(stops(result)).toEqual(['p', 'q', 't']);
+  // Buying 20, 40, or 60 tons at p has the same final cost; prefer 20.
+  expect(
+    result.events
+      .filter((e) => e.kind === 'refuel')
+      .map((e) => [e.systemId, e.tons]),
+  ).toEqual([
+    ['p', 20],
+    ['q', 60],
+  ]);
+  expect(result.totalCostCredits).toBe(8000);
+  expectBalanced(systems, result);
+});
+
+it('uses code-unit ID order and the smallest sufficient free departure tank', () => {
+  const systems = [
+    system('s', 1),
+    system('Z', 3, 'E', true),
+    system('a', 4, 'X', true),
+    system('t', 5, 'A', true),
+  ];
+  for (const input of [
+    systems,
+    systems.toReversed(),
+    [...systems.slice(2), ...systems.slice(0, 2)],
+  ]) {
+    const result = reached(createRouter(input).findRoute('s', 't'));
+    expect(stops(result)).toEqual(['Z', 't']);
+    expect(result.events.filter((e) => e.kind === 'refuel')).toMatchObject([
+      {
+        systemId: 'Z',
+        tons: 20,
+        fuelBeforeTons: 20,
+        fuelAfterTons: 40,
+        costCredits: 0,
+      },
+    ]);
+    expect(result.fuelRemainingTons).toBe(0);
+    expectBalanced(systems, result);
+  }
+});
+
+it('exhausts reachable free-scooping cycles when the destination is isolated', () => {
+  const systems = [
+    system('s', 1, 'X', true),
+    system('a', 2, 'X', true),
+    system('b', 1, 'X', true, 2),
+    system('t', 10, 'X', true, 8),
+  ];
+  expect(createRouter(systems).findRoute('s', 't')).toEqual({
+    status: 'unreachable',
+    originId: 's',
+    destinationId: 't',
+  });
 });

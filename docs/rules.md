@@ -51,6 +51,7 @@ hosted by a third party, not the publisher. Page references use printed SRD numb
 - **Geometry:** one-based columns 1–8 and rows 1–10; even display columns sit
   half a row below odd columns. Convert with `q = column - 1` and
   `r = row - 1 - floor(q / 2)`. Axial coordinates are never display addresses.
+  This offset agrees with the [Traveller Map coordinate convention](https://travellermap.com/doc/api).
   Jumps connect only authored systems; empty-hex stops are excluded.
 
 ## Routing implementation
@@ -73,7 +74,10 @@ Labels minimize purchased credits, then jumps, then total parsecs. Final ties
 compare the sequence of `(next system ID, departure fuel)` pairs lexicographically,
 using ascending ID and then ascending fuel. This also deterministically selects
 fuel transactions without adding an arrival-reserve objective. Equal-state
-labels have identical future options. The earliest settled destination state is
+labels have identical future options. On a primary-score tie, path keys have
+the same length (one entry per jump), so appending the same continuation preserves
+their order. Every edge strictly increases the primary score through its jump
+count, even when scooping is free. The earliest settled destination state is
 optimal; exhausting the search returns `status: 'unreachable'`.
 
 For N systems, there are V = 4N states and at most E = O(N²) combined edges.
@@ -89,7 +93,13 @@ fuel before/after, transaction source/grade/price, total purchased cost, jumps,
 distance, and final fuel. The original **Ember Reach** fixture in
 `src/data/emberReach.ts` includes a free three-jump Aster–Cinder route versus a
 paid two-jump corridor, dry worlds, all six port classes, and isolated Last Ember.
-Tests compare tiny networks against a separate one-ton Bellman–Ford solver.
+Tests compare tiny one-column and multidimensional networks against a separate
+one-ton Bellman–Ford solver across all dry/paid/free facility assignments and
+endpoint pairs. Its geometry uses display-grid breadth-first walks independent
+of the axial conversion and distance formula; all 6,400 subsector address pairs
+are cross-checked. Itinerary checks independently replay fuel, prices, distances,
+and locations, including repeated visits. Dedicated cases cover departure-fuel
+and code-unit ID ties and exhaustion of free-scooping cycles.
 
 Limitations remain the fixed ship, one subsector, deterministic facilities, and
 excluded time/risk/operating costs above. Fuel grades are recorded rather than

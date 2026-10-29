@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fromAxial, toAxial } from './subsector';
 import { hexDistance } from './hexDistance';
+import { addresses, displayDistance } from './geometry.test-support';
 
 describe('Traveller subsector geometry', () => {
   it('places even display columns half a row below odd columns', () => {
@@ -47,4 +48,27 @@ describe('Traveller subsector geometry', () => {
   ])('rejects invalid address %s/%s', (column, row) => {
     expect(() => toAxial({ column, row })).toThrow(RangeError);
   });
+});
+
+it('matches independent display-grid walks for all 6,400 address pairs', () => {
+  for (const from of addresses)
+    for (const to of addresses)
+      expect(hexDistance(toAxial(from), toAxial(to))).toBe(
+        displayDistance(from, to),
+      );
+});
+
+it.each([
+  { q: -1, r: 0 },
+  { q: 8, r: 0 },
+  { q: 0, r: -1 },
+  { q: 0, r: 10 },
+  { q: 7, r: -4 },
+  { q: 7, r: 7 },
+  { q: 1.5, r: 0 },
+  { q: 0, r: 0.5 },
+  { q: NaN, r: 0 },
+  { q: 0, r: Infinity },
+])('rejects axial coordinates outside the subsector: %o', (hex) => {
+  expect(() => fromAxial(hex)).toThrow(RangeError);
 });
