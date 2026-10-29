@@ -56,9 +56,12 @@ export function routeStops(result: RouteResult): Stop[] {
     })),
   ];
 }
+// Presentation-only projection shared by hexes, routes and interaction targets.
+// Engine addresses and distances are unaffected; glyphs are not stretched.
+const rowScale = 1.1;
 export const point = (w: { col: number; row: number }) => ({
   x: 38 + (w.col - 1) * 66,
-  y: 38 + (w.row - 1) * 66 + (w.col % 2 === 0 ? 33 : 0),
+  y: (38 + (w.row - 1) * 66 + (w.col % 2 === 0 ? 33 : 0)) * rowScale,
 });
 export const hexes = Array.from({ length: 80 }, (_, i) => {
   const col = Math.floor(i / 10) + 1;
@@ -69,7 +72,7 @@ export const hexes = Array.from({ length: 80 }, (_, i) => {
     row,
     points: Array.from({ length: 6 }, (_, n) => {
       const a = (Math.PI * n) / 3;
-      return `${x + 44 * Math.cos(a)},${y + 38 * Math.sin(a)}`;
+      return `${x + 44 * Math.cos(a)},${y + 38 * Math.sin(a) * rowScale}`;
     }).join(' '),
   };
 });

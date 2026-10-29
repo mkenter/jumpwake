@@ -33,7 +33,7 @@ export function PassageChart({
   return (
     <svg
       className={styles.chart}
-      viewBox="-22 -16 650 716"
+      viewBox="-22 -18 650 800"
       role="group"
       aria-label="Ember Reach subsector. Select a world to inspect; use its details to change endpoints."
     >
@@ -123,7 +123,7 @@ export function PassageChart({
               className={styles.star}
               cx={p.x}
               cy={p.y}
-              r={index >= 0 ? 12 : 4}
+              r={index >= 0 ? 7 : 3.5}
             />
             <text className={styles.name} x={p.x + 15} y={p.y - 11}>
               {world.name.split(' ')[0]}

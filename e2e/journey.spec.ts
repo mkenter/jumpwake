@@ -41,6 +41,9 @@ for (const [width, height] of [
         path: testInfo.outputPath(`${name}.png`),
         fullPage: true,
       });
+      await page.screenshot({
+        path: testInfo.outputPath(`${name}-viewport.png`),
+      });
     };
     await expect(status).toHaveText('Choose an origin to begin.');
     await origin.selectOption('aster');
@@ -49,6 +52,50 @@ for (const [width, height] of [
     await expect(status).toContainText('3 jumps');
     await expect(status).toContainText('7 pc');
     await expect(status).toContainText('Cr0');
+    const chart = page.getByRole('region', { name: 'Subsector chart' });
+    const chartSvg = chart.locator('svg');
+    if (width > 700) {
+      const chartBox = await chartSvg.boundingBox();
+      const railBox = await page
+        .getByRole('region', { name: 'Passage manifest' })
+        .boundingBox();
+      const mapHeading = await chart.getByRole('heading').boundingBox();
+      const manifestHeading = await manifest.getByRole('heading').boundingBox();
+      expect(chartBox).not.toBeNull();
+      expect(railBox).not.toBeNull();
+      expect(chartBox!.height).toBeGreaterThan(600);
+      expect(railBox!.width).toBeCloseTo(340, 0);
+      expect(Math.abs(mapHeading!.y - manifestHeading!.y)).toBeLessThan(8);
+      // The SVG's view box includes the 1.1 row projection, so the rendered
+      // grid should occupy the intended generous chart area.
+      const gridBox = await chartSvg.locator('g').first().boundingBox();
+      expect(gridBox).not.toBeNull();
+      expect(gridBox!.height).toBeGreaterThan(600);
+    } else {
+      const chartBox = await chartSvg.boundingBox();
+      expect(chartBox).not.toBeNull();
+      expect(chartBox!.x).toBeGreaterThanOrEqual(0);
+      expect(chartBox!.x + chartBox!.width).toBeLessThanOrEqual(width);
+      expect(chartBox!.width / chartBox!.height).toBeCloseTo(650 / 800, 1);
+      const hitBox = await chartWorld('Drift Lantern')
+        .locator('rect')
+        .boundingBox();
+      expect(hitBox).not.toBeNull();
+      expect(hitBox!.width).toBeGreaterThanOrEqual(44);
+      expect(hitBox!.height).toBeGreaterThanOrEqual(44);
+    }
+    // Every inspection target, including Last Ember on the bottom row,
+    // stays wholly inside the chart so its keyboard focus ring is not clipped.
+    const svgBounds = (await chartSvg.boundingBox())!;
+    for (const target of await chartSvg.locator('rect').all()) {
+      const hit = (await target.boundingBox())!;
+      expect(hit.x).toBeGreaterThan(svgBounds.x + 1);
+      expect(hit.y).toBeGreaterThan(svgBounds.y + 1);
+      expect(hit.x + hit.width).toBeLessThan(svgBounds.x + svgBounds.width - 1);
+      expect(hit.y + hit.height).toBeLessThan(
+        svgBounds.y + svgBounds.height - 1,
+      );
+    }
     await capture('free-chart');
     if (width > 700) {
       await chartWorld('Drift Lantern').hover();
@@ -87,6 +134,7 @@ for (const [width, height] of [
     await expect(inspector).toContainText(
       'Events 8, 9, 12, 13 on your passage',
     );
+    await capture('selected-serein-inspection');
     if (width <= 700) {
       await inspector.getByRole('button', { name: 'Set destination' }).focus();
       await page.keyboard.press('Tab');
@@ -110,10 +158,35 @@ for (const [width, height] of [
       .evaluateAll((nodes) => nodes.map((node) => node.id));
     expect(new Set(ids).size).toBe(ids.length);
     await switchView('Chart');
-    await expect(page.locator('polyline')).toHaveAttribute(
-      'points',
-      '38,38 104,137 104,335 236,335 434,236 500,269 434,236 434,38',
-    );
+    const routePoints = await page.locator('polyline').getAttribute('points');
+    expect(routePoints).not.toBeNull();
+    const vertices = routePoints!
+      .trim()
+      .split(/\s+/)
+      .map((point) => point.split(',').map(Number));
+    expect(vertices).toHaveLength(8);
+    const plottedWorlds = [
+      'Aster Quay',
+      'Drift Lantern',
+      'Echo Basin',
+      'Kestrel Vault',
+      'Serein',
+      'Ilex',
+      'Serein',
+      'Orison',
+    ];
+    for (const [index, name] of plottedWorlds.entries()) {
+      const star = page
+        .getByRole('button', { name: new RegExp(`^Inspect ${name},`) })
+        .locator('circle')
+        .nth(1);
+      const center = await star.evaluate((element) => ({
+        x: Number(element.getAttribute('cx')),
+        y: Number(element.getAttribute('cy')),
+      }));
+      expect(vertices[index]![0]).toBeCloseTo(center.x, 5);
+      expect(vertices[index]![1]).toBeCloseTo(center.y, 5);
+    }
     await capture('paid-return-chart');
     await chartWorld('Last Ember').focus();
     await page.keyboard.press('Space');
@@ -154,6 +227,10 @@ test('touch inspection, endpoint actions and responsive state retention', async 
     'drift',
   );
   await page.getByRole('button', { name: /^Manifest/ }).tap();
+  await page.setViewportSize({ width: 900, height: 800 });
+  await expect(page.getByRole('button', { name: /^Manifest/ })).toBeVisible();
+  await expect(page.locator('#passage-chart')).toBeHidden();
+  await expect(page.locator('#passage-manifest')).toBeVisible();
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect(
     page.getByRole('region', { name: 'Subsector chart' }),

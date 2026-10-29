@@ -25,8 +25,17 @@ Design 3 is the visual foundation of the production application at `/`. Endpoint
 changes are explicit and world inspection is independent of passage selection.
 The manifest holds travel decisions; world details hold local context and fuel
 sources. On narrow screens, chart and manifest share endpoint state, and
-inspection opens in a dismissible sheet. Keyboard activation, Escape/Close,
+inspection opens in a dismissible sheet. Chart/manifest switching begins at
+1100px so the chart keeps its readable scale on tablets. Keyboard activation, Escape/Close,
 focus restoration and linked world/event highlighting are supported.
+
+The restored Design 3 composition uses an open paper chart, slate typography,
+subtle plum routes and a 340px desktop manifest rail. Both section headings share
+a baseline. The SVG scales with the available column width up to 1040px tall;
+the full chart deliberately extends below the first desktop viewport. Its 1.1
+vertical projection is applied consistently to hex geometry, world positions,
+route vertices and hit targets, while glyphs retain their proportions. This is
+presentation spacing, not a change to engine coordinates or parsec distances.
 
 One authoritative Ember Reach dataset supplies both the engine and chart. Its
 15 authored systems include dry worlds, paid ports, gas giants and isolated Last
@@ -39,7 +48,9 @@ return legs; each world remains one inspection target. The manifest shows a
 departure entry followed by every jump and refueling event in chronological order.
 Each entry has a unique occurrence ID, including repeated visits to the same
 world. World highlighting links all its events, and inspection lists those event
-numbers. Long manifests scroll with the page. Incomplete selection, unreachable
+numbers. Desktop world inspection sits below the manifest heading, ahead of its events,
+so long passages do not bury contextual details. Long manifests scroll with the
+page. Incomplete selection, unreachable
 routes and successful zero-jump same-world journeys have distinct states.
 
 ## Routing decisions

@@ -1,7 +1,8 @@
 .inspector {
-  margin-top: 16px;
-  padding: 0 0 0 16px;
-  border-left: 2px solid var(--accent);
+  margin-bottom: 20px;
+  padding: 16px;
+  border-top: 1px solid var(--ink);
+  border-left: 1px solid var(--line);
 }
 .heading {
   display: flex;
@@ -18,13 +19,13 @@
   outline: none;
 }
 .heading h2 span {
-  display: inline-block;
+  display: block;
   color: var(--muted);
   font:
     10px 'Avenir Next',
     Avenir,
     sans-serif;
-  margin-left: 8px;
+  margin-top: 7px;
 }
 .close {
   background: none;
@@ -43,14 +44,16 @@
   color: var(--muted);
   font-size: 12px;
   line-height: 1.6;
-  margin-top: 5px;
+  margin-top: 12px;
 }
 .inspector .fuel,
 .sheet .fuel {
   display: flex;
   gap: 12px;
   font-size: 11px;
-  margin-top: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
 }
 .fuel > span {
   color: var(--muted);
@@ -88,10 +91,10 @@
   border-top: 3px double var(--accent);
   background: var(--paper);
   color: var(--ink);
-  box-shadow: 0 -10px 40px #433d4910;
+  box-shadow: 0 -10px 40px #35424810;
 }
 .sheet::backdrop {
-  background: #433d494d;
+  background: #3542484d;
 }
 .sheet .heading h2 {
   font-size: 30px;
@@ -122,18 +125,4 @@
 }
 :global(body):has(.sheet[open]) {
   overflow: hidden;
-}
-@media (min-width: 701px) and (max-height: 850px) {
-  .inspector {
-    margin-top: 10px;
-  }
-  .heading {
-    min-height: 36px;
-  }
-  .close {
-    height: 44px;
-  }
-  .actions {
-    margin-top: 9px;
-  }
 }

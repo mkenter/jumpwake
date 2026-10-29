@@ -23,14 +23,14 @@ export function PassageThree() {
   const [highlight, setHighlight] = useState<string | null>(null);
   const [view, setView] = useState<'chart' | 'manifest'>('chart');
   const [compact, setCompact] = useState(
-    () => window.matchMedia('(max-width: 700px)').matches,
+    () => window.matchMedia('(max-width: 1100px)').matches,
   );
   const originRef = useRef<HTMLSelectElement>(null);
   const destinationRef = useRef<HTMLSelectElement>(null);
   const reduced = useReducedMotion();
 
   useEffect(() => {
-    const query = window.matchMedia('(max-width: 700px)');
+    const query = window.matchMedia('(max-width: 1100px)');
     const update = () => setCompact(query.matches);
     query.addEventListener('change', update);
     return () => query.removeEventListener('change', update);
@@ -86,6 +86,21 @@ export function PassageThree() {
     );
   }
 
+  const inspectionPanel = inspection ? (
+    <WorldInspection
+      inspection={inspection}
+      compact={compact}
+      origin={origin}
+      destination={destination}
+      routeIndices={stops.flatMap((stop, index) =>
+        stop.world === inspection.id ? [index + 1] : [],
+      )}
+      hasPassage={Boolean(passage)}
+      onClose={closeInspection}
+      onUseWorld={useWorld}
+    />
+  ) : null;
+
   return (
     <div className={styles.page}>
       <a className={styles.skipLink} href="#main-content">
@@ -99,9 +114,8 @@ export function PassageThree() {
           JUMPWAKE<small>PASSENGER NAVIGATION SERVICE</small>
         </span>
         <span className={styles.issue}>
-          EMBER REACH
-          <br />
-          CHART Nº 001
+          Ember Reach
+          <span>Chart Nº 001</span>
         </span>
       </header>
       <main id="main-content" tabIndex={-1}>
@@ -214,8 +228,10 @@ export function PassageThree() {
             hidden={compact && view !== 'chart'}
           >
             <div className={styles.mapHeading}>
-              <h2>Ember Reach</h2>
-              <span>1 hex = 1 parsec</span>
+              <h2>
+                Ember Reach <span>field chart</span>
+              </h2>
+              <span>8 × 10 hexes · 1 pc per hex</span>
             </div>
             <PassageChart
               stops={stops.filter((stop) => stop.kind !== 'refuel')}
@@ -244,6 +260,7 @@ export function PassageThree() {
                 <h2>Passage manifest</h2>
                 <span>Jump–3 · 200 t · scoops</span>
               </div>
+              {!compact && inspectionPanel}
               {passage ? (
                 <motion.ol
                   key={`${origin}-${destination}`}
@@ -346,32 +363,7 @@ export function PassageThree() {
                 </p>
               )}
             </section>
-            {inspection ? (
-              <WorldInspection
-                inspection={inspection}
-                compact={compact}
-                origin={origin}
-                destination={destination}
-                routeIndices={stops.flatMap((stop, index) =>
-                  stop.world === inspection.id ? [index + 1] : [],
-                )}
-                hasPassage={Boolean(passage)}
-                onClose={closeInspection}
-                onUseWorld={useWorld}
-              />
-            ) : (
-              <div className={styles.inspectionHint} hidden={compact}>
-                <span aria-hidden="true">◎</span>
-                <p>
-                  Look a little closer.
-                  <br />
-                  <span>
-                    Select a world or manifest stop to inspect its port and fuel
-                    sources. Your passage stays in place.
-                  </span>
-                </p>
-              </div>
-            )}
+            {compact && inspectionPanel}
           </div>
         </div>
       </main>

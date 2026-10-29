@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createRouter } from '../../engine';
 import { EMBER_REACH } from '../../data/emberReach';
-import { routeStops, worlds } from './presentation';
+import { hexes, point, routeStops, worlds } from './presentation';
 const router = createRouter(EMBER_REACH);
 describe('calculated passage presentation', () => {
   it('keeps purchase, scoop and return visits in chronological order', () => {
@@ -63,5 +63,42 @@ describe('calculated passage presentation', () => {
       'Refined · Cr500/t',
     );
     expect(worlds.every((w) => w.note)).toBe(true);
+  });
+
+  it('keeps the vertical chart projection aligned across worlds and hexes', () => {
+    const first = point({ col: 3, row: 2 });
+    const nextRow = point({ col: 3, row: 3 });
+    expect(nextRow.y - first.y).toBeCloseTo(66 * 1.1);
+
+    for (const hex of hexes) {
+      const center = point({ col: hex.col, row: hex.row });
+      const vertices = hex.points
+        .split(' ')
+        .map((pair) => pair.split(',').map(Number));
+      expect(
+        vertices.reduce((sum, vertex) => sum + vertex[0]!, 0) / 6,
+      ).toBeCloseTo(center.x, 8);
+      expect(
+        vertices.reduce((sum, vertex) => sum + vertex[1]!, 0) / 6,
+      ).toBeCloseTo(center.y, 8);
+    }
+
+    for (const world of worlds) {
+      const center = point(world);
+      const hex = hexes.find(
+        (candidate) =>
+          candidate.col === world.col && candidate.row === world.row,
+      );
+      expect(hex).toBeDefined();
+      const vertices = hex!.points
+        .split(' ')
+        .map((pair) => pair.split(',').map(Number));
+      expect(
+        vertices.reduce((sum, vertex) => sum + vertex[0]!, 0) / 6,
+      ).toBeCloseTo(center.x, 8);
+      expect(
+        vertices.reduce((sum, vertex) => sum + vertex[1]!, 0) / 6,
+      ).toBeCloseTo(center.y, 8);
+    }
   });
 });
