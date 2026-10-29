@@ -1,9 +1,9 @@
 import { expect, it } from 'vitest';
-import { fuelSources, jumpFuelTons, SHIP } from './fuelRules';
-import type { Starport } from './fuelRules';
+import { fuelSources, jumpFuelTons, INITIAL_STATE } from './index';
+import type { Starport } from './index';
 
 it('uses actual distance for the fixed ship', () => {
-  expect(SHIP.initialFuelTons).toBe(60);
+  expect(INITIAL_STATE.initialFuelTons).toBe(60);
   expect([1, 2, 3].map(jumpFuelTons)).toEqual([20, 40, 60]);
   for (const value of [0, 4, 1.5, NaN])
     expect(() => jumpFuelTons(value)).toThrow();

@@ -1,4 +1,4 @@
-import type { StarSystem } from '../engine';
+import type { StarSystem } from '../rules/classicTraveller1981';
 
 type AuthoredSystem = StarSystem & { readonly note: string };
 

@@ -1,62 +1,60 @@
-# Rules reference
+# Classic Traveller 1981 rules audit
 
-Use **Cepheus Engine System Reference Document**, Jason “Flynn” Kemp, Samardan
-Press, 2016: [publisher listing](https://www.drivethrurpg.com/en/product/186894/cepheus-engine-system-reference-document)
-and [publisher preview](https://d1vzi28wh99zvq.cloudfront.net/pdf_previews/186894-sample.pdf).
-The rules below were checked against an [original SRD PDF copy](https://drduick.com/D%26D/books/Cepheus_Engine_System_Reference_Document.pdf),
-hosted by a third party, not the publisher. Page references use printed SRD numbers.
+Primary target: **Classic Traveller (1981), Book 2: Starships** and
+**Book 3: Worlds and Adventures**, read from the owner's local PDFs in
+`.references/ct81/`. No errata or later supplements were consulted. No rule is
+claimed to have been checked against official errata. Suspected corrections and
+ambiguities remain unresolved pending an errata review.
 
-## Verified SRD mechanics
+Citations below use **printed pages**. In both supplied scans, printed page 4
+is PDF viewer page 6 (zero-based index 5); printed page 15 is viewer page 17.
+The printed subsector grid is Book 3 p. 13 (viewer page 15), and the starport
+table is printed p. 10 (viewer page 12). PDFs and extracted text are not tracked.
 
-| Topic              | Mechanic and source section                                                                                                                                                                                                                     |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Range and distance | Jump number is range in parsecs: **Ship Drives**, p. 123. Each map hex represents one parsec: **Star Mapping**, p. 167.                                                                                                                         |
-| Jump fuel          | `0.1 × hull tonnage × actual jump distance`, consumed per jump: **Fuel**, p. 124. For 200 tons, this gives 20/40/60 tons for Jump-1/2/3.                                                                                                        |
-| Capacity           | Power-plant fuel is additional: one-third of plant tonnage per week, rounded down; at least two weeks carried: **Fuel**, p. 124.                                                                                                                |
-| Purchasing         | Refined fuel: Cr500/ton at A/B starports. Unrefined: Cr100/ton at A/B/C. Delivery away from port adds Cr100/ton: **Fuel**, p. 109.                                                                                                              |
-| Scooping           | Gas giants provide free unrefined fuel; collection takes 1D6 hours per 40 tons: **Fuel**, p. 109. Hull configuration affects suitability (pp. 120–121); scoops and processors are distinct equipment (**Fuel Scoops/Fuel Processors**, p. 128). |
+## Verified mechanics and implementation audit
 
-## Jumpwake prototype simplifications
+| Mechanic                    | Independently summarized 1981 rule and source                                                                                                                                                                | Jumpwake behavior, match and deferred work                                                                                                                                                                                                                                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Coordinates and distances   | Book 3, Worlds / Star Mapping, p. 4; Subsector Map Grid, p. 13: eight columns by ten rows, one parsec per hex; numbered columns are staggered.                                                               | Matches the one-based column/row layout and hex distance. Axial q/r are internal, not addresses. Conversion: q = column − 1; r = row − 1 − floor(q/2). Only authored-system stops are searched; empty-space jumps are outside scope. The printed form appears to include an extra bottom row; the p. 4 dimensions govern this demo, pending review. |
+| Jump range                  | Book 2, Interstellar Travel, p. 4; Required Starship Components, pp. 13–14: jump rating limits parsecs, with hull/drive potential, sufficient power plant and computer support.                              | Matches the fixed effective Jump-3 range. Assumes a working, adequately powered drive and supporting computer/software. Does not validate a complete ship design; defer those checks.                                                                                                                                                               |
+| Jump fuel and shorter jumps | Book 2, Required Starship Components / D. Fuel, pp. 14–15: jump allocation is 0.1 × displacement × jump number; shorter jumps consume the lower amount for the jump used.                                    | Matches 20/40/60 tons for this 200-ton ship. No route correction needed. Four states remain specific to this ship and initial full allocation.                                                                                                                                                                                                      |
+| Port availability           | Book 3, Starport Types, p. 10: A/B supply refined fuel; C/D supply only unrefined fuel; E has none; X has no port.                                                                                           | C/D and E/X match. A/B offer both grades in the existing demo: **provisional**, because the table does not explicitly establish unrefined sales at A/B. Retained to preserve routes; later review must settle that policy before claiming full fidelity.                                                                                            |
+| Prices                      | Book 2, Starship Malfunctions, p. 6; Starship Economics / Fuel, p. 9: refined Cr500/ton, unrefined Cr100/ton at most ports.                                                                                  | Matches baseline prices, including D. Unlimited supply and uniform prices are demo assumptions; local shortages, exceptions and delivery costs are excluded.                                                                                                                                                                                        |
+| Gas giants                  | Book 2, Starship Malfunctions, p. 6; Book 3, Star Mapping / Gas Giants, p. 5: skimming provides free unrefined fuel, including without a port; streamlined vessels can skim. Book 3 generally allows a week. | Matches free unrefined supply for the streamlined, scoop-equipped demo. Unlimited access assumed; transit and collection time omitted. Book 2 p. 4 describes immediate refueling and re-jumping when hurried; timing reconciliation remains unresolved and does not affect this cost model.                                                         |
+| Wilderness water            | Book 2, Starship Malfunctions, p. 6; Optional Components / Atmospheric Streamlining, p. 15: lake/ocean water can provide unrefined fuel.                                                                     | Unimplemented: data has no water-access field. Do not infer water from fictional descriptions. Add explicit facilities and access constraints later.                                                                                                                                                                                                |
+| Equipment                   | Book 2, Atmospheric Streamlining, p. 15: streamlining includes scoops for giants and open water; must be chosen at construction.                                                                             | Fixed ship assumes both. No configurable equipment exposed; processing is not assumed. These sections do not establish a processor model for this implementation; any future processing mechanics need a source review.                                                                                                                             |
+| Grades and risk             | Book 2, Starship Malfunctions, p. 6: unrefined fuel can increase drive-failure and misjump risk unless equipped for it; engineering staffing and maintenance affect failure.                                 | Grades recorded but not separate tank inventories. Risks excluded, so cheapest fuel dominates refined fuel. Scoops alone are not asserted to remove the unrefined-fuel penalty. Equipment needed to qualify for that exemption remains unspecified here. Defer risk, mixing and malfunction simulation.                                             |
+| Tankage and power plant     | Book 2, D. Fuel, pp. 14–15: minimum tankage is 0.1 × M × Jn + 10 × Pn; plant allocation supports four weeks of routine operations and maneuver.                                                              | Partial model: 60 tons is jump allocation only, not total tankage. A rating-3 plant would require another 30 tons under that formula. Plant rating and consumption are not modeled; do not present this as a validated ship design.                                                                                                                 |
+| Operations                  | Book 2, Interstellar Travel, p. 4; Starship Malfunctions, p. 6: roughly a week per jump regardless of length; proximity to worlds affects misjump risk, notably within 100 and 10 diameters.                 | No duration, jump-entry geometry, maintenance, crew, access restrictions or operational costs. Arrival has no modeled reserve; initial fuel is a sunk cost. These are routing policies, not universal CT rules.                                                                                                                                     |
 
-- The fixed ship and initial jump-fuel allocation are specified in
-  [product.md](product.md). The 60 tons are a jump-fuel budget, not total ship
-  tankage or a validated ship design; power-plant consumption is outside this model.
-- v0.1 compares purchased fuel cost, jump count, and distance. It does not simulate
-  jump-entry geometry, navigation checks, misjumps, equipment damage, piracy,
-  travel/refueling duration, or fuel-delivery logistics. These exclusions are
-  prototype scope choices, not claims that the SRD omits them.
+## Rules boundary and remaining constraints
 
-## v0.1 policy decisions
+`src/rules/types.ts` defines the injected `TravelRules<S>` contract over a minimal
+ID/hex system. The router owns geometry, validation of IDs/addresses, graph search,
+objectives, events and results. Rules validate edition-specific facilities and supply
+jump consumption and priced sources. The engine imports no CT implementation.
+`src/rules/classicTraveller1981/` owns ship specifications, a separate initial
+fuel state, fuel rules and starport data types. Application composition supplies
+that implementation explicitly; Ember Reach remains independently authored data.
 
-- **Class D:** the services table (p. 172) explicitly offers unrefined fuel,
-  whereas the purchasing paragraph (p. 109) only names A/B/C. We follow the
-  services table for availability and apply the p. 109 unrefined price of
-  Cr100/ton to D as an explicit prototype interpretation, not an unambiguous
-  quoted rule. A/B offer both grades, C/D unrefined, E/X no port fuel.
-- **Grades:** transactions retain the source and grade. Both grades are usable;
-  purity, mixing, processing and fuel-related risk are not simulated. Consequently
-  refined fuel (Cr500/ton) is available but dominated by unrefined fuel in this
-  cost-only model. Scooped fuel is always labeled unrefined.
-- **Hull:** assume the fixed ship is streamlined and equipped with scoops,
-  satisfying the gas-giant case on p. 109. This is a scope assumption, not a
-  complete validated ship design; no processor is assumed.
-- **Facilities:** every authored system explicitly declares its starport class
-  and gas-giant presence. Port supplies and accessible giants are unlimited;
-  no local restrictions or water collection are modeled. Gas giants provide free
-  fuel even at E/X systems. Initial fuel is a sunk cost.
-- **Arrival:** no minimum reserve; reaching the destination ends the journey
-  without refueling there. Departure from and arrival at the same system needs
-  no actions. Unknown IDs and malformed maps are input errors, distinct from a
-  valid destination that cannot be reached.
-- **Geometry:** one-based columns 1–8 and rows 1–10; even display columns sit
-  half a row below odd columns. Convert with `q = column - 1` and
-  `r = row - 1 - floor(q / 2)`. Axial coordinates are never display addresses.
-  This offset agrees with the [Traveller Map coordinate convention](https://travellermap.com/doc/api).
-  Jumps connect only authored systems; empty-hex stops are excluded.
+The search deliberately retains four 20-ton states, 60 tons initially aboard and
+a maximum three-parsec edge. It rejects incompatible jump-consumption functions.
+This is a replaceable rules boundary within a constrained router, not general ship
+support. Rules callbacks must be deterministic and return finite nonnegative prices.
+No existing route behavior changes in this milestone; provisional A/B supply and
+excluded risk remain explicit above.
+
+Next milestone must parameterize capacity, starting fuel, fuel granularity and
+range together; establish an exact state-space model for arbitrary consumption;
+validate ship specifications separately from current operational state; and extend
+the independent oracle before exposing configuration. Power-plant reserves and
+elapsed time need an explicit policy before calculating total operating fuel.
+Grades/equipment require inventory and eligibility decisions. No vessel UI, rules
+selector or new optimization objective is included here.
 
 ## Routing implementation
 
-`createRouter` in `src/engine/routing.ts` snapshots and validates the map, sorts
+`createRouter(map, rules)` in `src/engine/routing.ts` snapshots and validates the map, sorts
 systems by ID using JavaScript code-unit order, and precomputes Jump-1/2/3
 neighbors. `findRoute(originId, destinationId)` runs lexicographic Dijkstra over
 (system, remaining fuel). Its four fuel levels are 0/20/40/60 tons. This is exact
@@ -111,8 +109,10 @@ operations simulation.
 
 ## Content and licensing
 
-The SRD includes Open Game Content/Product Identity designations (p. 1), a separate
-compatibility-statement license (p. 205), and OGL 1.0a (pp. 206–207). Review their
-application, attribution, and notices before distributing derived content or making
-compatibility claims; this is not a legal determination. Summarize only needed
-mechanics with citations. Do not import proprietary Traveller text or setting data.
+Original code and the fictional Ember Reach setting are separate from the
+Traveller-specific module and these independently written rule summaries.
+The boundary identifies removable dependencies; it grants no rights to distribute
+Traveller text, names or trademarks. Review permission for derived rules content,
+attribution and compatibility/trademark wording before distribution. No software
+license is selected or changed, and no legal compliance claim is made. Local
+rulebooks remain ignored and must not be committed or distributed.

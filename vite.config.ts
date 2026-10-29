@@ -9,7 +9,7 @@ export default defineConfig({
         test: {
           name: 'engine',
           environment: 'node',
-          include: ['src/engine/**/*.test.ts'],
+          include: ['src/engine/**/*.test.ts', 'src/rules/**/*.test.ts'],
         },
       },
       {
@@ -18,7 +18,7 @@ export default defineConfig({
           name: 'ui',
           environment: 'jsdom',
           include: ['src/**/*.test.{ts,tsx}'],
-          exclude: ['src/engine/**'],
+          exclude: ['src/engine/**', 'src/rules/**'],
           setupFiles: ['./src/test/setup.ts'],
         },
       },

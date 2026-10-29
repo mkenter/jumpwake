@@ -1,8 +1,9 @@
+import { classicTraveller1981 } from '../../rules/classicTraveller1981';
 import { describe, expect, it } from 'vitest';
 import { createRouter } from '../../engine';
 import { EMBER_REACH } from '../../data/emberReach';
 import { hexes, point, routeStops, worlds } from './presentation';
-const router = createRouter(EMBER_REACH);
+const router = createRouter(EMBER_REACH, classicTraveller1981);
 describe('calculated passage presentation', () => {
   it('keeps purchase, scoop and return visits in chronological order', () => {
     const result = router.findRoute('aster', 'orison');

@@ -1,3 +1,4 @@
+import { classicTraveller1981 } from '../../../rules/classicTraveller1981';
 import { describe, expect, it } from 'vitest';
 import { createRouter } from '../../../engine';
 import { EMBER_REACH } from '../../../data/emberReach';
@@ -156,7 +157,7 @@ describe('route chart lanes', () => {
   });
 
   it('plots calculated jumps chronologically without counting refueling as travel', () => {
-    const router = createRouter(EMBER_REACH);
+    const router = createRouter(EMBER_REACH, classicTraveller1981);
     const legs = routeLegs(routeStops(router.findRoute('aster', 'orison')));
     expect(legs.map((leg) => [leg.from, leg.to])).toEqual([
       ['aster', 'drift'],

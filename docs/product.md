@@ -6,8 +6,7 @@ at the table.
 
 ## v0.1 target
 
-- Classic Traveller-compatible conventions using the original Cepheus Engine SRD
-  as the intended rules reference; see [rules.md](rules.md) for verification status.
+- Classic Traveller 1981 Books 2 and 3 as the primary rules target; see [rules.md](rules.md) for verification status.
 - One 8 × 10 subsector containing authored, fictional star systems.
 - One fixed 200-ton Jump-3 ship with fuel scoops and 60 tons allocated to jump
   fuel, initially full.
