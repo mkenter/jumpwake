@@ -23,14 +23,14 @@ export function PassageThree() {
   const [highlight, setHighlight] = useState<string | null>(null);
   const [view, setView] = useState<'chart' | 'manifest'>('chart');
   const [compact, setCompact] = useState(
-    () => window.matchMedia('(max-width: 1100px)').matches,
+    () => window.matchMedia('(max-width: 899px)').matches,
   );
   const originRef = useRef<HTMLSelectElement>(null);
   const destinationRef = useRef<HTMLSelectElement>(null);
   const reduced = useReducedMotion();
 
   useEffect(() => {
-    const query = window.matchMedia('(max-width: 1100px)');
+    const query = window.matchMedia('(max-width: 899px)');
     const update = () => setCompact(query.matches);
     query.addEventListener('change', update);
     return () => query.removeEventListener('change', update);

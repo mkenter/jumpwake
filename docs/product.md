@@ -25,13 +25,13 @@ Design 3 is the visual foundation of the production application at `/`. Endpoint
 changes are explicit and world inspection is independent of passage selection.
 The manifest holds travel decisions; world details hold local context and fuel
 sources. On narrow screens, chart and manifest share endpoint state, and
-inspection opens in a dismissible sheet. Chart/manifest switching begins at
-1100px so the chart keeps its readable scale on tablets. Keyboard activation, Escape/Close,
-focus restoration and linked world/event highlighting are supported.
+inspection opens in a dismissible sheet. Chart/manifest switching applies below
+900px; wider windows show both panels with a 280–340px manifest rail. Keyboard
+activation, Escape/Close, focus restoration and linked world/event highlighting are supported.
 
 The restored Design 3 composition uses an open paper chart, slate typography,
-subtle plum routes and a 340px desktop manifest rail. Both section headings share
-a baseline. The SVG scales with the available column width up to 1040px tall;
+subtle plum routes and a manifest rail that reaches 340px on wider desktops. Both
+section headings share a baseline. The SVG scales with the available column width up to 1040px tall;
 the full chart deliberately extends below the first desktop viewport. Its 1.1
 vertical projection is applied consistently to hex geometry, world positions,
 route vertices and hit targets, while glyphs retain their proportions. This is

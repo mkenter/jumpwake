@@ -2,6 +2,12 @@ import { expect, test } from '@playwright/test';
 for (const [width, height] of [
   [1440, 900],
   [1280, 800],
+  [1100, 800],
+  [1024, 800],
+  [960, 800],
+  [900, 800],
+  [899, 800],
+  [768, 800],
   [390, 844],
 ] as const) {
   test(`calculated journeys and inspection at ${width}`, async ({
@@ -20,13 +26,13 @@ for (const [width, height] of [
     const status = page.getByRole('status');
     const manifest = page.getByRole('region', { name: 'Passage manifest' });
     const inspector =
-      width <= 700
+      width < 900
         ? page.getByRole('dialog')
         : page.getByRole('complementary', { name: 'World inspection' });
     const chartWorld = (name: string) =>
       page.getByRole('button', { name: new RegExp(`^Inspect ${name},`) });
     const switchView = async (view: 'Chart' | 'Manifest') => {
-      if (width <= 700)
+      if (width < 900)
         await page
           .getByRole('button', { name: new RegExp(`^${view}`) })
           .click();
@@ -54,7 +60,7 @@ for (const [width, height] of [
     await expect(status).toContainText('Cr0');
     const chart = page.getByRole('region', { name: 'Subsector chart' });
     const chartSvg = chart.locator('svg');
-    if (width > 700) {
+    if (width >= 900) {
       const chartBox = await chartSvg.boundingBox();
       const railBox = await page
         .getByRole('region', { name: 'Passage manifest' })
@@ -64,7 +70,13 @@ for (const [width, height] of [
       expect(chartBox).not.toBeNull();
       expect(railBox).not.toBeNull();
       expect(chartBox!.height).toBeGreaterThan(600);
-      expect(railBox!.width).toBeCloseTo(340, 0);
+      expect(railBox!.width).toBeGreaterThanOrEqual(280);
+      expect(railBox!.width).toBeLessThanOrEqual(340);
+      if (width >= 1280) expect(railBox!.width).toBeCloseTo(340, 0);
+      expect(chartBox!.width).toBeGreaterThan(railBox!.width * 1.9);
+      await expect(
+        page.getByRole('group', { name: 'Planner view' }),
+      ).toBeHidden();
       expect(Math.abs(mapHeading!.y - manifestHeading!.y)).toBeLessThan(8);
       // The SVG's view box includes the 1.1 row projection, so the rendered
       // grid should occupy the intended generous chart area.
@@ -89,6 +101,8 @@ for (const [width, height] of [
     const svgBounds = (await chartSvg.boundingBox())!;
     for (const target of await chartSvg.locator('rect').all()) {
       const hit = (await target.boundingBox())!;
+      expect(hit.width).toBeGreaterThanOrEqual(44);
+      expect(hit.height).toBeGreaterThanOrEqual(44);
       expect(hit.x).toBeGreaterThan(svgBounds.x + 1);
       expect(hit.y).toBeGreaterThan(svgBounds.y + 1);
       expect(hit.x + hit.width).toBeLessThan(svgBounds.x + svgBounds.width - 1);
@@ -96,8 +110,16 @@ for (const [width, height] of [
         svgBounds.y + svgBounds.height - 1,
       );
     }
+    for (const world of await chartSvg.locator('[data-world]').all()) {
+      const label = (await world.locator('text').first().boundingBox())!;
+      expect(label.height).toBeGreaterThanOrEqual(12);
+      expect(label.x).toBeGreaterThanOrEqual(svgBounds.x);
+      expect(label.x + label.width).toBeLessThanOrEqual(
+        svgBounds.x + svgBounds.width,
+      );
+    }
     await capture('free-chart');
-    if (width > 700) {
+    if (width >= 900) {
       await chartWorld('Drift Lantern').hover();
       await expect(
         manifest.getByRole('button', {
@@ -135,7 +157,7 @@ for (const [width, height] of [
       'Events 8, 9, 12, 13 on your passage',
     );
     await capture('selected-serein-inspection');
-    if (width <= 700) {
+    if (width < 900) {
       await inspector.getByRole('button', { name: 'Set destination' }).focus();
       await page.keyboard.press('Tab');
       await expect(
@@ -227,7 +249,7 @@ test('touch inspection, endpoint actions and responsive state retention', async 
     'drift',
   );
   await page.getByRole('button', { name: /^Manifest/ }).tap();
-  await page.setViewportSize({ width: 900, height: 800 });
+  await page.setViewportSize({ width: 899, height: 800 });
   await expect(page.getByRole('button', { name: /^Manifest/ })).toBeVisible();
   await expect(page.locator('#passage-chart')).toBeHidden();
   await expect(page.locator('#passage-manifest')).toBeVisible();
