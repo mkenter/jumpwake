@@ -1,5 +1,6 @@
 import { EMBER_REACH } from '../../data/emberReach';
-import { fuelSources, SHIP, type RouteResult } from '../../engine';
+import type { RouteResult } from '../../engine';
+import { fuelSources, INITIAL_STATE } from '../../rules/classicTraveller1981';
 
 export const worlds = EMBER_REACH.map((system) => ({
   ...system,
@@ -40,7 +41,7 @@ export function routeStops(result: RouteResult): Stop[] {
         ? 'Depart with full jump fuel'
         : 'Already at your destination. No travel needed.',
       cost: 0,
-      fuel: `${SHIP.initialFuelTons} t aboard`,
+      fuel: `${INITIAL_STATE.initialFuelTons} t aboard`,
     },
     ...result.events.map((event, index): Stop => ({
       id: `event-${index}`,

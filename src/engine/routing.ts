@@ -1,7 +1,8 @@
-import { FUEL_UNIT_TONS, SHIP, fuelSources, jumpFuelTons } from './fuelRules';
-import type { FuelSource, StarSystem } from './fuelRules';
+import type { FuelSource, RouteSystem, TravelRules } from '../rules/types';
 import { hexDistance } from './hexDistance';
 import { toAxial } from './subsector';
+
+const FUEL_UNIT_TONS = 20;
 
 export interface FuelTransaction extends FuelSource {
   readonly kind: 'refuel';
@@ -56,7 +57,10 @@ function compare(a: Label, b: Label): number {
 }
 
 /** Snapshot and validate a subsector once; each query owns all search state. */
-export function createRouter(input: readonly StarSystem[]) {
+export function createRouter<S extends RouteSystem>(
+  input: readonly S[],
+  rules: TravelRules<S>,
+) {
   const systems = input
     .map((s) => ({ ...s, hex: { ...s.hex } }))
     .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
@@ -65,33 +69,40 @@ export function createRouter(input: readonly StarSystem[]) {
   const positions = systems.map((s, i) => {
     const position = toAxial(s.hex);
     const address = `${s.hex.column}/${s.hex.row}`;
-    if (
-      !s.id.trim() ||
-      ids.has(s.id) ||
-      addresses.has(address) ||
-      !['A', 'B', 'C', 'D', 'E', 'X'].includes(s.starport) ||
-      typeof s.gasGiant !== 'boolean'
-    ) {
+    if (!s.id.trim() || ids.has(s.id) || addresses.has(address)) {
       throw new Error(
         'Systems require unique nonempty IDs, unique hexes, and valid fuel facilities',
       );
     }
+    rules.validateSystem(s);
     ids.set(s.id, i);
     addresses.add(address);
     return position;
   });
+  // Reject rules incompatible with this constrained search, rather than silently
+  // using distance as fuel consumption for an unsupported ship.
+  for (const distance of [1, 2, 3]) {
+    if (rules.jumpFuelTons(distance) !== distance * FUEL_UNIT_TONS)
+      throw new Error('Router requires 20/40/60-ton jump consumption');
+  }
   const neighbors = positions.map((p, i) =>
     positions.flatMap((q, j) => {
       const distance = hexDistance(p, q);
-      return i !== j && distance <= SHIP.jumpRating
-        ? [{ target: j, distance }]
-        : [];
+      return i !== j && distance <= 3 ? [{ target: j, distance }] : [];
     }),
   );
   // With risks and duration excluded, more expensive grades are dominated.
-  const sources = systems.map(
-    (s) => fuelSources(s).sort((a, b) => a.creditsPerTon - b.creditsPerTon)[0],
-  );
+  const sources = systems.map((s) => {
+    const available = [...rules.fuelSources(s)];
+    if (
+      available.some(
+        (source) =>
+          !Number.isFinite(source.creditsPerTon) || source.creditsPerTon < 0,
+      )
+    )
+      throw new Error('Fuel prices must be finite and nonnegative');
+    return available.sort((a, b) => a.creditsPerTon - b.creditsPerTon)[0];
+  });
 
   return {
     findRoute(originId: string, destinationId: string): RouteResult {
@@ -165,7 +176,7 @@ export function createRouter(input: readonly StarSystem[]) {
               fromId: systems[current]!.id,
               toId: systems[target]!.id,
               distance,
-              fuelConsumedTons: jumpFuelTons(distance),
+              fuelConsumedTons: rules.jumpFuelTons(distance),
               fuelBeforeTons: departure * FUEL_UNIT_TONS,
               fuelAfterTons: (departure - distance) * FUEL_UNIT_TONS,
             });

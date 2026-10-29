@@ -1,3 +1,4 @@
+import { classicTraveller1981 } from '../../rules/classicTraveller1981';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import clsx from 'clsx';
@@ -15,7 +16,7 @@ import { EMBER_REACH } from '../../data/emberReach';
 import { Masthead } from './Masthead';
 import styles from './PassageThree.module.css';
 
-const router = createRouter(EMBER_REACH);
+const router = createRouter(EMBER_REACH, classicTraveller1981);
 
 export function PassageThree() {
   const [origin, setOrigin] = useState('');

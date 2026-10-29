@@ -1,6 +1,6 @@
 # Jumpwake
 
-A browser-based interstellar route planner for Cepheus-compatible science-fiction
+A browser-based interstellar route planner for Classic Traveller 1981 science-fiction
 tabletop RPGs. A focused play aid for plotting journeys across a hex subsector.
 
 ## Current status
@@ -15,15 +15,16 @@ The routing engine completed its independent correctness review at `defd9df`
 and is connected to the application. The manifest shows departure followed by
 chronological jump and refueling events, including return visits. Same-world
 journeys need no travel; unreachable destinations have an explicit result.
-No SRD text is included.
+No rulebook text is included.
 
 Try Aster Quay → Cinder Rest for free scooping, Aster Quay → Orison for paid
 fuel and a return visit to Serein, and Aster Quay → Last Ember for an unreachable
 destination. Ember Reach in `src/data/emberReach.ts` is the authoritative map;
 it also holds world descriptions. Display formatting lives with the planner.
 
-The engine exports `createRouter`, coordinate conversions, and fuel rules through
-`src/engine/index.ts`. Construct a router from `EMBER_REACH` in
+The engine exports `createRouter`, and coordinate conversions through
+`src/engine/index.ts`. Pass `classicTraveller1981` from `src/rules/classicTraveller1981` as the second
+argument to `createRouter`. Construct a router from `EMBER_REACH` in
 `src/data/emberReach.ts`, then call `findRoute('aster', 'cinder')`. See
 [the rules document](docs/rules.md#routing-implementation) for the algorithm,
 complexity, assumptions, and result contract.
