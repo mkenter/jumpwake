@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { createServer } from 'vite';
 
 // Export portable assets from the component's canonical geometry; no tracing
-// or separate hand-maintained copies of the badge or orbital paths.
+// or separate hand-maintained copies of the badge or ornamental paths.
 const server = await createServer({
   server: { middlewareMode: true, ws: false },
 });
@@ -20,8 +20,8 @@ try {
       .replace(
         '<svg ',
         variant === 'full'
-          ? '<svg width="1280" height="570" '
-          : '<svg width="730" height="330" ',
+          ? '<svg width="1320" height="296" '
+          : '<svg width="580" height="248" ',
       );
     await writeFile(new URL(`jumpwake-${variant}.svg`, directory), `${svg}\n`);
   }

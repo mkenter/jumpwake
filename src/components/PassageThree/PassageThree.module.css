@@ -27,30 +27,26 @@
   outline-offset: 3px;
 }
 .header {
-  min-height: 128px;
+  min-height: 72px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 20px;
-  padding-block: 6px;
   border-bottom: 1px solid var(--ink);
 }
 .brandLockup {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .brand {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  width: 256px;
+  width: 80px;
   min-height: 44px;
   text-decoration: none;
-}
-.brand .compactLogo {
-  display: none;
 }
 .wordmark {
   font-size: 11px;
@@ -378,18 +374,8 @@
   }
 }
 @media (min-width: 701px) and (max-width: 1100px) {
-  .header {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    min-height: 116px;
-  }
   .brandLockup {
-    gap: 12px;
-  }
-  .brand {
-    width: 224px;
-  }
-  .wordmark {
-    font-size: 10px;
+    gap: 10px;
   }
   .wordmark small {
     display: none;
@@ -413,20 +399,6 @@
   }
   .endpoints select {
     width: 190px;
-  }
-}
-@media (max-width: 959px) {
-  .header {
-    min-height: 80px;
-  }
-  .brand {
-    width: 80px;
-  }
-  .brand .fullLogo {
-    display: none;
-  }
-  .brand .compactLogo {
-    display: block;
   }
 }
 @media (max-width: 700px) {
@@ -541,12 +513,6 @@
   }
 }
 
-@media (max-width: 380px) {
-  .title {
-    font-size: 18px;
-  }
-}
-
 .skipLink {
   position: absolute;
   top: -100px;
@@ -555,4 +521,10 @@
   top: 8px;
   background: var(--paper);
   z-index: 10;
+}
+
+@media (max-width: 380px) {
+  .title {
+    font-size: 18px;
+  }
 }
