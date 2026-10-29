@@ -5,7 +5,7 @@ tabletop RPGs. A focused play aid for plotting journeys across a hex subsector.
 
 ## Current status
 
-The v0.1 working demo runs at `/`, using Design 3's pale chart and passage
+The v0.1 working demo runs at `/`, using the Art Deco letterhead, pale chart and passage
 manifest. Choose any two worlds in the fictional Ember Reach subsector to
 calculate a route with jump-fuel accounting, fuel purchasing and scooping, and
 deterministic cost optimization. Inspect worlds independently of endpoint
@@ -41,15 +41,16 @@ npm run dev
 Open the local URL printed by Vite. No accounts, environment variables, or backend
 services are required.
 
-| Command              | Purpose                                                      |
-| -------------------- | ------------------------------------------------------------ |
-| `npm run dev`        | Start the development server                                 |
-| `npm run check`      | Check formatting, lint, TypeScript, and unit/component tests |
-| `npm run test:watch` | Watch unit/component tests                                   |
-| `npm run format`     | Apply formatting                                             |
-| `npm run build`      | Type-check and build static assets into `dist/`              |
-| `npm run preview`    | Serve the production build locally                           |
-| `npm run test:e2e`   | Build and run the Chromium journey tests                     |
+| Command               | Purpose                                                      |
+| --------------------- | ------------------------------------------------------------ |
+| `npm run dev`         | Start the development server                                 |
+| `npm run check`       | Check formatting, lint, TypeScript, and unit/component tests |
+| `npm run test:watch`  | Watch unit/component tests                                   |
+| `npm run format`      | Apply formatting                                             |
+| `npm run build`       | Type-check and build static assets into `dist/`              |
+| `npm run build:logos` | Export full and compact SVG identities from shared geometry  |
+| `npm run preview`     | Serve the production build locally                           |
+| `npm run test:e2e`    | Build and run the Chromium journey tests                     |
 
 Before the first browser test, install Chromium:
 
@@ -67,6 +68,16 @@ the production build, and the journey tests.
 - [Product requirements and scope](docs/product.md)
 - [Rules references and open questions](docs/rules.md)
 - [Coding guide](AGENTS.md)
+
+The logo's hand-drawn SVG geometry lives in
+`src/components/JumpwakeLogo/JumpwakeLogo.tsx`. After changing it, run
+`npm run build:logos` and commit the regenerated standalone assets in
+`public/brand/`. The exports use fixed palette colors and outlined lettering;
+they need no fonts, stylesheets, or external resources. The full identity uses
+mirrored Art Deco wings in the letterhead; the sticky navigation uses the compact
+framed monogram. The ivory badge background is intentionally opaque. Run
+`npm run test:e2e -- e2e/logo.spec.ts e2e/deco.spec.ts` to regenerate standalone
+logo and application previews in ignored `test-results/` directories.
 
 ## Licensing status
 

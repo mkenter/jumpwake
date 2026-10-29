@@ -1,7 +1,7 @@
 .inspector {
   margin-bottom: 20px;
   padding: 16px;
-  border-top: 1px solid var(--ink);
+  border-top: 3px double var(--gold-line);
   border-left: 1px solid var(--line);
 }
 .heading {
@@ -65,7 +65,7 @@
 }
 .actions button {
   background: transparent;
-  border: 1px solid var(--ink);
+  border: 1px solid var(--gold-line);
   min-height: 44px;
   padding: 8px 16px;
   font-size: 11px;
