@@ -1,11 +1,9 @@
 import { MotionConfig } from 'motion/react';
-import { AppShell } from './components';
-import { Exploration } from './experiments/Exploration';
-
+import { PassageThree } from './components';
 export function App() {
   return (
     <MotionConfig reducedMotion="user">
-      {location.pathname === '/explore' ? <Exploration /> : <AppShell />}
+      <PassageThree />
     </MotionConfig>
   );
 }

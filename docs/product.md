@@ -19,31 +19,45 @@ at the table.
 
 Current capabilities are documented in the [README](../README.md).
 
-## Design 3 interactive study
+## Application interactions
 
-Design 3 at `/explore?design=3` is the chosen visual foundation. Its prototype
-keeps endpoint changes explicit and world inspection separate from passage
-selection. The manifest holds travel decisions; world details hold local context
-and fuel sources. On narrow screens, chart and manifest share endpoint state,
-and inspection opens in a dismissible sheet.
+Design 3 is the visual foundation of the production application at `/`. Endpoint
+changes are explicit and world inspection is independent of passage selection.
+The manifest holds travel decisions; world details hold local context and fuel
+sources. On narrow screens, chart and manifest share endpoint state, and
+inspection opens in a dismissible sheet. Keyboard activation, Escape/Close,
+focus restoration and linked world/event highlighting are supported.
 
-The shared fixtures provide only Aster–Orison and Aster–Vela passages. Other pairs
-show a missing-example state, not an engine verdict on reachability. Same-world
-endpoints and incomplete selection have separate states. No navigation/fuel
-symbol system or new rules requirements are established by this study.
+One authoritative Ember Reach dataset supplies both the engine and chart. Its
+15 authored systems include dry worlds, paid ports, gas giants and isolated Last
+Ember. Orison, Serein and Ilex extend the original engine fixture to exercise
+purchases and return visits. Useful descriptions from the design study are
+retained as world context; fuel availability comes from engine rules.
+
+The summary uses the engine's totals. The chart follows jumps in order, including
+return legs; each world remains one inspection target. The manifest shows a
+departure entry followed by every jump and refueling event in chronological order.
+Each entry has a unique occurrence ID, including repeated visits to the same
+world. World highlighting links all its events, and inspection lists those event
+numbers. Long manifests scroll with the page. Incomplete selection, unreachable
+routes and successful zero-jump same-world journeys have distinct states.
 
 ## Routing decisions
 
 Arrival requires no reserve. Unreachable routes have an explicit result status.
 After cost, jumps, and distance, ties compare the sequence of
 `(next system ID, departure fuel)` pairs lexicographically, using ascending ID
-and then ascending fuel. The engine and authored Ember Reach fixture are
-implemented; the engine completed its independent correctness review at
-`defd9df`. It is not yet connected to the Design 3 UI, whose map and manifest
-still use authored examples. Integrating engine results and presenting
-unreachable routes and stops with no usable fuel remain UI work. Mechanics,
-algorithm details, and deliberate simplifications are tracked in
-[rules.md](rules.md).
+and then ascending fuel. The engine is implemented and connected to the UI,
+following its independent correctness review at `defd9df`. Initial fuel is a sunk
+cost. Fuel balances show the quantity before and after each event, and the
+manifest reports fuel remaining on arrival. Mechanics, algorithm details, and
+deliberate simplifications are tracked in [rules.md](rules.md).
+
+Browser tests cover calculated free and paid routes, repeated visits, unreachable
+and same-world destinations, keyboard and touch inspection, focus restoration,
+and desktop/mobile state retention. Captures are generated in ignored test
+results, rather than committed as historical screenshots. The original visual
+explorations remain on their branches.
 
 ## Explicitly deferred
 

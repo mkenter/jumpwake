@@ -1,9 +1,12 @@
 import type { StarSystem } from '../engine';
 
+type AuthoredSystem = StarSystem & { readonly note: string };
+
 /** Original authored setting; no generated or imported setting data. */
-export const EMBER_REACH: readonly StarSystem[] = [
+export const EMBER_REACH: readonly AuthoredSystem[] = [
   {
     id: 'aster',
+    note: 'A bright departure port on a temperate ocean world.',
     name: 'Aster Quay',
     hex: { column: 1, row: 1 },
     starport: 'A',
@@ -11,6 +14,7 @@ export const EMBER_REACH: readonly StarSystem[] = [
   },
   {
     id: 'brass',
+    note: 'A quiet exchange port above the cloud sea.',
     name: 'Brass Ledger',
     hex: { column: 1, row: 4 },
     starport: 'C',
@@ -18,6 +22,7 @@ export const EMBER_REACH: readonly StarSystem[] = [
   },
   {
     id: 'cinder',
+    note: 'A silent stone world, visited by survey crews.',
     name: 'Cinder Rest',
     hex: { column: 1, row: 7 },
     starport: 'E',
@@ -25,6 +30,7 @@ export const EMBER_REACH: readonly StarSystem[] = [
   },
   {
     id: 'drift',
+    note: 'Pale rings and deep hydrogen skies. A natural place to replenish.',
     name: 'Drift Lantern',
     hex: { column: 2, row: 2 },
     starport: 'X',
@@ -32,6 +38,7 @@ export const EMBER_REACH: readonly StarSystem[] = [
   },
   {
     id: 'echo',
+    note: 'A chain of island cities beneath a small blue sun.',
     name: 'Echo Basin',
     hex: { column: 2, row: 5 },
     starport: 'X',
@@ -39,6 +46,7 @@ export const EMBER_REACH: readonly StarSystem[] = [
   },
   {
     id: 'fallow',
+    note: 'An old observatory and a patient, well-equipped port.',
     name: 'Fallow Exchange',
     hex: { column: 3, row: 1 },
     starport: 'B',
@@ -46,6 +54,7 @@ export const EMBER_REACH: readonly StarSystem[] = [
   },
   {
     id: 'gloam',
+    note: 'A rain-washed outpost beyond the regular passenger service.',
     name: 'Gloam Anchorage',
     hex: { column: 3, row: 4 },
     starport: 'D',
@@ -53,6 +62,7 @@ export const EMBER_REACH: readonly StarSystem[] = [
   },
   {
     id: 'hush',
+    note: 'A remote research station on a chalk-white moon.',
     name: 'Hush Cairn',
     hex: { column: 3, row: 8 },
     starport: 'X',
@@ -60,6 +70,7 @@ export const EMBER_REACH: readonly StarSystem[] = [
   },
   {
     id: 'ink',
+    note: 'A young settlement in a wide belt of asteroids.',
     name: 'Ink Haven',
     hex: { column: 2, row: 10 },
     starport: 'C',
@@ -67,6 +78,7 @@ export const EMBER_REACH: readonly StarSystem[] = [
   },
   {
     id: 'jacinth',
+    note: 'White terraces overlook an inland sea.',
     name: 'Jacinth Bell',
     hex: { column: 4, row: 2 },
     starport: 'E',
@@ -74,13 +86,39 @@ export const EMBER_REACH: readonly StarSystem[] = [
   },
   {
     id: 'kestrel',
+    note: 'A garden world at the edge of the inhabited reach.',
     name: 'Kestrel Vault',
     hex: { column: 4, row: 5 },
     starport: 'B',
     gasGiant: true,
   },
   {
+    id: 'orison',
+    note: 'The northern terminus. White terraces overlook an inland sea.',
+    name: 'Orison',
+    hex: { column: 7, row: 1 },
+    starport: 'E',
+    gasGiant: false,
+  },
+  {
+    id: 'serein',
+    note: 'A rain-washed outpost beyond the regular passenger service.',
+    name: 'Serein',
+    hex: { column: 7, row: 4 },
+    starport: 'D',
+    gasGiant: false,
+  },
+  {
+    id: 'ilex',
+    note: 'Pale rings and deep hydrogen skies. A natural place to replenish.',
+    name: 'Ilex',
+    hex: { column: 8, row: 4 },
+    starport: 'X',
+    gasGiant: true,
+  },
+  {
     id: 'last',
+    note: 'A distant refuge on the southern chart boundary.',
     name: 'Last Ember',
     hex: { column: 8, row: 10 },
     starport: 'X',

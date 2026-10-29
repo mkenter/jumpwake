@@ -90,9 +90,12 @@ needed. Repeated queries reuse geometry but own fresh labels and result objects.
 
 Results contain chronologically ordered refueling and jump events, per-event
 fuel before/after, transaction source/grade/price, total purchased cost, jumps,
-distance, and final fuel. The original **Ember Reach** fixture in
+distance, and final fuel. The authoritative **Ember Reach** dataset in
 `src/data/emberReach.ts` includes a free three-jump Aster–Cinder route versus a
 paid two-jump corridor, dry worlds, all six port classes, and isolated Last Ember.
+The integrated demo adds Orison, Serein and Ilex: Aster Quay–Orison costs Cr4,000
+and revisits Serein after scooping at Ilex. The UI preserves the event order and
+distinguishes repeated occurrences in the manifest.
 Tests compare tiny one-column and multidimensional networks against a separate
 one-ton Bellman–Ford solver across all dry/paid/free facility assignments and
 endpoint pairs. Its geometry uses display-grid breadth-first walks independent

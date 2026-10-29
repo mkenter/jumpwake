@@ -7,7 +7,7 @@ import {
   worldById,
   worlds,
   type Stop,
-} from '../../../data/passageScenario';
+} from '../presentation';
 import styles from './PassageChart.module.css';
 
 type Props = {
@@ -35,7 +35,7 @@ export function PassageChart({
       className={styles.chart}
       viewBox="-22 -16 650 716"
       role="group"
-      aria-label="Lacuna subsector. Select a world to inspect; use its details to change endpoints."
+      aria-label="Ember Reach subsector. Select a world to inspect; use its details to change endpoints."
     >
       <g className={styles.grid} aria-hidden="true">
         {hexes.map((hex) => (
@@ -125,18 +125,8 @@ export function PassageChart({
               cy={p.y}
               r={index >= 0 ? 12 : 4}
             />
-            {index >= 0 && (
-              <text
-                className={styles.number}
-                x={p.x}
-                y={p.y + 5}
-                textAnchor="middle"
-              >
-                {index + 1}
-              </text>
-            )}
             <text className={styles.name} x={p.x + 15} y={p.y - 11}>
-              {world.name}
+              {world.name.split(' ')[0]}
             </text>
             <text className={styles.code} x={p.x + 15} y={p.y + 8}>
               {endpoint ?? address(world)}

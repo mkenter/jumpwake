@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { address, worldById } from '../../../data/passageScenario';
+import { address, worldById } from '../presentation';
 import styles from './WorldInspection.module.css';
 
 export type Inspection = { id: string; trigger: HTMLElement | SVGElement };
@@ -9,7 +9,7 @@ type Props = {
   compact: boolean;
   origin: string;
   destination: string;
-  routeIndex: number;
+  routeIndices: number[];
   hasPassage: boolean;
   onClose: () => void;
   onUseWorld: (endpoint: 'origin' | 'destination') => void;
@@ -20,7 +20,7 @@ export function WorldInspection({
   compact,
   origin,
   destination,
-  routeIndex,
+  routeIndices,
   hasPassage,
   onClose,
   onUseWorld,
@@ -33,7 +33,7 @@ export function WorldInspection({
   useEffect(() => {
     const dialog = dialogRef.current;
     if (compact) dialog?.showModal();
-    headingRef.current?.focus({ preventScroll: true });
+    headingRef.current?.focus({ preventScroll: compact });
     return () => {
       dialog?.close();
     };
@@ -66,8 +66,8 @@ export function WorldInspection({
           ? 'Your origin'
           : world.id === destination
             ? 'Your destination'
-            : routeIndex >= 0
-              ? `Stop ${routeIndex + 1} on your passage`
+            : routeIndices.length > 0
+              ? `Events ${routeIndices.join(', ')} on your passage`
               : hasPassage
                 ? 'Outside your passage'
                 : 'World details'}{' '}

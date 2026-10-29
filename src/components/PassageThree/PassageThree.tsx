@@ -1,16 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import clsx from 'clsx';
 import {
   address,
   credits,
-  passages,
+  routeStops,
   worldById,
   worlds,
-} from '../../data/passageScenario';
+} from './presentation';
 import { PassageChart } from './PassageChart';
 import { WorldInspection, type Inspection } from './WorldInspection';
+import { createRouter } from '../../engine';
+import { EMBER_REACH } from '../../data/emberReach';
 import styles from './PassageThree.module.css';
+
+const router = createRouter(EMBER_REACH);
 
 export function PassageThree() {
   const [origin, setOrigin] = useState('');
@@ -32,23 +36,20 @@ export function PassageThree() {
     return () => query.removeEventListener('change', update);
   }, []);
 
-  // Only select an authored example. No route finding or fuel calculation lives here.
-  const passage = passages.find(
-    (p) => p.origin === origin && p.destination === destination,
+  const result = useMemo(
+    () =>
+      origin && destination ? router.findRoute(origin, destination) : null,
+    [origin, destination],
   );
-  const stops = passage?.stops ?? [];
-  const cost = stops.reduce((sum, stop) => sum + stop.cost, 0);
-  const distance = stops.reduce((sum, stop) => sum + stop.jump, 0);
-  const sameWorld = Boolean(origin && origin === destination);
-  const status = passage
-    ? `${worldById(origin).name} to ${worldById(destination).name}. ${stops.length - 1} jumps, ${distance} pc, ${credits(cost)} purchased fuel. Illustrative passage.`
-    : !origin
-      ? 'Choose an origin to begin.'
-      : !destination
-        ? `Departing ${worldById(origin).name}. Choose a destination.`
-        : sameWorld
-          ? `You’re already at ${worldById(origin).name}. Choose a different destination.`
-          : 'No authored route for these endpoints. This does not mean the destination is unreachable.';
+  const passage = result?.status === 'reachable' ? result : null;
+  const stops = useMemo(() => (result ? routeStops(result) : []), [result]);
+  const cost = passage?.totalCostCredits ?? 0;
+  const distance = passage?.totalDistance ?? 0;
+  const status = !origin
+    ? 'Choose an origin to begin.'
+    : !destination
+      ? `Departing ${worldById(origin).name}. Choose a destination.`
+      : 'Destination unreachable with this ship and available fuel sources.';
 
   function inspect(id: string, trigger: HTMLElement | SVGElement) {
     setHighlight(null);
@@ -57,9 +58,12 @@ export function PassageThree() {
 
   function closeInspection() {
     const trigger = inspection?.trigger;
+    if (compact && trigger) {
+      setView(trigger.closest('#passage-manifest') ? 'manifest' : 'chart');
+    }
     setInspection(null);
     setHighlight(null);
-    requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
+    requestAnimationFrame(() => trigger?.focus({ preventScroll: compact }));
   }
 
   function useWorld(endpoint: 'origin' | 'destination') {
@@ -84,24 +88,23 @@ export function PassageThree() {
 
   return (
     <div className={styles.page}>
+      <a className={styles.skipLink} href="#main-content">
+        Skip to planner
+      </a>
       <header className={styles.header}>
-        <a
-          className={styles.brand}
-          href="/explore"
-          aria-label="Jumpwake design studies"
-        >
+        <a className={styles.brand} href="/" aria-label="Jumpwake home">
           J / W
         </a>
         <span>
           JUMPWAKE<small>PASSENGER NAVIGATION SERVICE</small>
         </span>
         <span className={styles.issue}>
-          LACUNA REACH
+          EMBER REACH
           <br />
           CHART Nº 001
         </span>
       </header>
-      <main id="exploration-main" tabIndex={-1}>
+      <main id="main-content" tabIndex={-1}>
         <div className={styles.title}>
           <h1>
             The stars, <em>within reach.</em>
@@ -155,14 +158,14 @@ export function PassageThree() {
             {passage ? (
               <>
                 <strong>
-                  {stops.length - 1} jumps <span>·</span> {distance} pc
+                  {passage.jumpCount} jumps <span>·</span> {distance} pc
                 </strong>
                 <span className={styles.summaryCost}>
                   {credits(cost)} <span>purchased fuel</span>
                 </span>
                 <span className={styles.sr}>
                   {worldById(origin).name} to {worldById(destination).name}.
-                  Illustrative passage.
+                  Calculated passage.
                 </span>
               </>
             ) : (
@@ -170,14 +173,16 @@ export function PassageThree() {
             )}
           </p>
           {passage && (
-            <span className={styles.fixtureLabel}>Illustrative passage</span>
+            <span className={styles.optimizationLabel}>
+              Lowest purchased fuel cost
+            </span>
           )}
           {!origin && !destination && (
             <button
               className={styles.sampleLink}
-              onClick={() => sample('orison')}
+              onClick={() => sample('cinder')}
             >
-              Try a sample <span aria-hidden="true">↗</span>
+              Plan a journey <span aria-hidden="true">↗</span>
             </button>
           )}
         </div>
@@ -198,7 +203,7 @@ export function PassageThree() {
             aria-controls="passage-manifest"
             onClick={() => setView('manifest')}
           >
-            Manifest{passage ? ` · ${stops.length} stops` : ''}
+            Manifest{passage ? ` · ${stops.length} events` : ''}
           </button>
         </div>
         <div className={styles.workspace}>
@@ -209,11 +214,11 @@ export function PassageThree() {
             hidden={compact && view !== 'chart'}
           >
             <div className={styles.mapHeading}>
-              <h2>Lacuna Reach</h2>
+              <h2>Ember Reach</h2>
               <span>1 hex = 1 parsec</span>
             </div>
             <PassageChart
-              stops={stops}
+              stops={stops.filter((stop) => stop.kind !== 'refuel')}
               selected={inspection?.id ?? null}
               highlight={highlight}
               origin={origin}
@@ -248,16 +253,16 @@ export function PassageThree() {
                   transition={{ duration: reduced ? 0 : 0.18 }}
                 >
                   {stops.map((stop, index) => (
-                    <li key={stop.world}>
+                    <li key={stop.id}>
                       <button
                         className={clsx(
                           styles.stop,
                           inspection?.id === stop.world && styles.activeStop,
                           highlight === stop.world && styles.highlightStop,
                         )}
-                        aria-label={`Inspect stop ${index + 1}, ${worldById(stop.world).name}`}
+                        aria-label={`Inspect event ${index + 1}, ${worldById(stop.world).name}`}
                         data-highlighted={highlight === stop.world}
-                        aria-describedby={`stop-leg-${stop.world} stop-detail-${stop.world} stop-cost-${stop.world}`}
+                        aria-describedby={`stop-leg-${stop.id} stop-detail-${stop.id} stop-cost-${stop.id}`}
                         aria-pressed={inspection?.id === stop.world}
                         onClick={(event) =>
                           inspect(stop.world, event.currentTarget)
@@ -267,19 +272,23 @@ export function PassageThree() {
                         onFocus={() => setHighlight(stop.world)}
                         onBlur={() => setHighlight(null)}
                       >
-                        <span className={styles.ordinal}>0{index + 1}</span>
+                        <span className={styles.ordinal}>
+                          {String(index + 1).padStart(2, '0')}
+                        </span>
                         <span className={styles.stopBody}>
                           <span className={styles.stopTitle}>
                             {worldById(stop.world).name}
-                            <small id={`stop-leg-${stop.world}`}>
-                              {index === 0
+                            <small id={`stop-leg-${stop.id}`}>
+                              {stop.kind === 'departure'
                                 ? 'Departure'
-                                : `${stop.jump} pc${index === stops.length - 1 ? ' · Arrival' : ' from previous'}`}
+                                : stop.kind === 'refuel'
+                                  ? 'Refueling'
+                                  : `${stop.jump} pc · Jump`}
                             </small>
                           </span>
                           <span
                             className={styles.stopDetails}
-                            id={`stop-detail-${stop.world}`}
+                            id={`stop-detail-${stop.id}`}
                           >
                             <span className={styles.stopAction}>
                               {stop.action}
@@ -289,7 +298,7 @@ export function PassageThree() {
                         </span>
                         <span
                           className={styles.price}
-                          id={`stop-cost-${stop.world}`}
+                          id={`stop-cost-${stop.id}`}
                         >
                           <span className={styles.sr}>Purchased fuel: </span>
                           {stop.cost ? (
@@ -308,35 +317,32 @@ export function PassageThree() {
               ) : (
                 <div className={styles.empty}>
                   <h3>
-                    {sameWorld
-                      ? 'Already at your destination.'
-                      : origin && destination
-                        ? 'A passage yet to be charted.'
-                        : origin
-                          ? 'Where shall we take you?'
-                          : 'Every passage begins somewhere.'}
+                    {origin && destination
+                      ? 'Destination unreachable.'
+                      : origin
+                        ? 'Where shall we take you?'
+                        : 'Every passage begins somewhere.'}
                   </h3>
                   <p>
                     {origin && destination
-                      ? sameWorld
-                        ? 'Choose another world to plan a passage.'
-                        : 'This pair has no illustrative route. Routing will be available after engine integration.'
+                      ? 'No route satisfies the jump range and fuel constraints. Choose another destination.'
                       : 'Choose your worlds above, or inspect one on the chart and set it as an endpoint.'}
                   </p>
                   <div className={styles.examples}>
-                    <span>Explore an authored passage</span>
-                    <button onClick={() => sample('orison')}>
-                      Aster → Orison <span aria-hidden="true">↗</span>
+                    <span>Plan a journey</span>
+                    <button onClick={() => sample('cinder')}>
+                      Aster Quay → Cinder Rest <span aria-hidden="true">↗</span>
                     </button>
-                    <button onClick={() => sample('vela')}>
-                      Aster → Vela <span aria-hidden="true">↗</span>
+                    <button onClick={() => sample('orison')}>
+                      Aster Quay → Orison <span aria-hidden="true">↗</span>
                     </button>
                   </div>
                 </div>
               )}
               {passage && (
                 <p className={styles.manifestNote}>
-                  Jump fuel at stops: arrival → departure
+                  Jump fuel before → after each event. Arrival:{' '}
+                  {passage.fuelRemainingTons} t. Initial 60 t is a sunk cost.
                 </p>
               )}
             </section>
@@ -346,8 +352,8 @@ export function PassageThree() {
                 compact={compact}
                 origin={origin}
                 destination={destination}
-                routeIndex={stops.findIndex(
-                  (stop) => stop.world === inspection.id,
+                routeIndices={stops.flatMap((stop, index) =>
+                  stop.world === inspection.id ? [index + 1] : [],
                 )}
                 hasPassage={Boolean(passage)}
                 onClose={closeInspection}
@@ -370,7 +376,7 @@ export function PassageThree() {
         </div>
       </main>
       <footer className={styles.footer}>
-        <span>ILLUSTRATIVE ROUTES · NOT CALCULATED</span>
+        <span>JUMP–3 · 200 T · 60 T INITIAL JUMP FUEL</span>
         <span>Fuel grades simplified · no arrival reserve</span>
       </footer>
       <p className={styles.sr} aria-live="polite">

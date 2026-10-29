@@ -1,1 +1,0 @@
-export { PassageThree } from './PassageThree';

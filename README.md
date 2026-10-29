@@ -5,20 +5,22 @@ tabletop RPGs. A focused play aid for plotting journeys across a hex subsector.
 
 ## Current status
 
-Responsive application shell plus visual studies at `/explore`. Design 3
-(`/explore?design=3`) is the chosen visual foundation and a working interactive
-passage prototype: choose endpoints, inspect worlds and stops, and switch between
-authored example journeys. It uses shared fictional fixtures; its routes and fuel
-decisions are not calculated. The production shell remains separate from the
-studies. See the [Design 3 review](review-artifacts/design-3-review.md) for the
-interaction critique and comparable screenshots.
+The v0.1 working demo runs at `/`, using Design 3's pale chart and passage
+manifest. Choose any two worlds in the fictional Ember Reach subsector to
+calculate a route with jump-fuel accounting, fuel purchasing and scooping, and
+deterministic cost optimization. Inspect worlds independently of endpoint
+selection; on phones, switch between Chart and Manifest with shared journey state.
 
-The routing engine is implemented and completed its independent correctness
-review at `defd9df`, but is not yet connected to the UI. It provides
-Traveller subsector geometry, jump-fuel accounting, fuel purchasing and scooping,
-and deterministic cost optimization. The original Ember Reach fixture exercises
-free refueling detours and unreachable destinations. Connecting engine results to
-the Design 3 map and itinerary remains to be done. No SRD text is included.
+The routing engine completed its independent correctness review at `defd9df`
+and is connected to the application. The manifest shows departure followed by
+chronological jump and refueling events, including return visits. Same-world
+journeys need no travel; unreachable destinations have an explicit result.
+No SRD text is included.
+
+Try Aster Quay → Cinder Rest for free scooping, Aster Quay → Orison for paid
+fuel and a return visit to Serein, and Aster Quay → Last Ember for an unreachable
+destination. Ember Reach in `src/data/emberReach.ts` is the authoritative map;
+it also holds world descriptions. Display formatting lives with the planner.
 
 The engine exports `createRouter`, coordinate conversions, and fuel rules through
 `src/engine/index.ts`. Construct a router from `EMBER_REACH` in
@@ -47,7 +49,7 @@ services are required.
 | `npm run format`     | Apply formatting                                             |
 | `npm run build`      | Type-check and build static assets into `dist/`              |
 | `npm run preview`    | Serve the production build locally                           |
-| `npm run test:e2e`   | Build and run the Chromium smoke test                        |
+| `npm run test:e2e`   | Build and run the Chromium journey tests                     |
 
 Before the first browser test, install Chromium:
 
@@ -58,7 +60,7 @@ npx playwright install chromium
 On Linux, use `npx playwright install --with-deps chromium` to also install system
 dependencies. Playwright starts a production preview on `127.0.0.1:4173`; keep
 that port free. CI installs those browser dependencies and runs all checks,
-the production build, and the smoke test.
+the production build, and the journey tests.
 
 ## Project notes
 

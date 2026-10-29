@@ -6,7 +6,7 @@
   --paper: #f5f1ef;
   color: var(--ink);
   background: var(--paper);
-  min-height: calc(100vh - 48px);
+  min-height: 100vh;
   padding: 0 6%;
 }
 .page h1,
@@ -127,7 +127,7 @@
 .summaryCost > span {
   color: var(--muted);
 }
-.fixtureLabel {
+.optimizationLabel {
   font-size: 10px;
   color: var(--muted);
 }
@@ -465,7 +465,7 @@
   .journeySummary p {
     gap: 4px 14px;
   }
-  .fixtureLabel {
+  .optimizationLabel {
     display: none;
   }
   .mobileTabs {
@@ -533,4 +533,14 @@
     flex-direction: column;
     margin-top: 16px;
   }
+}
+
+.skipLink {
+  position: absolute;
+  top: -100px;
+}
+.skipLink:focus {
+  top: 8px;
+  background: var(--paper);
+  z-index: 10;
 }
