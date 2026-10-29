@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createRouter } from './routing';
+import { createRouter as createEngineRouter } from './routing';
+import { classicTraveller1981 } from '../rules/classicTraveller1981';
+const createRouter = (systems: readonly StarSystem[]) =>
+  createEngineRouter(systems, classicTraveller1981);
 import type { RouteResult } from './routing';
-import type { StarSystem, Starport } from './fuelRules';
+import type { StarSystem, Starport } from '../rules/classicTraveller1981';
 import { displayDistance } from './geometry.test-support';
 import { EMBER_REACH } from '../data/emberReach';
 

@@ -2,7 +2,7 @@
   "name": "jumpwake",
   "private": true,
   "version": "0.0.0",
-  "description": "A browser-based interstellar route planner for Cepheus-compatible tabletop play.",
+  "description": "A browser-based interstellar route planner for Classic Traveller 1981 tabletop play.",
   "license": "UNLICENSED",
   "type": "module",
   "engines": {
