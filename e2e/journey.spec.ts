@@ -180,13 +180,8 @@ for (const [width, height] of [
       .evaluateAll((nodes) => nodes.map((node) => node.id));
     expect(new Set(ids).size).toBe(ids.length);
     await switchView('Chart');
-    const routePoints = await page.locator('polyline').getAttribute('points');
-    expect(routePoints).not.toBeNull();
-    const vertices = routePoints!
-      .trim()
-      .split(/\s+/)
-      .map((point) => point.split(',').map(Number));
-    expect(vertices).toHaveLength(8);
+    const legs = page.locator('polyline[data-route-leg]');
+    await expect(legs).toHaveCount(7);
     const plottedWorlds = [
       'Aster Quay',
       'Drift Lantern',
@@ -197,18 +192,68 @@ for (const [width, height] of [
       'Serein',
       'Orison',
     ];
-    for (const [index, name] of plottedWorlds.entries()) {
-      const star = page
-        .getByRole('button', { name: new RegExp(`^Inspect ${name},`) })
-        .locator('circle')
-        .nth(1);
-      const center = await star.evaluate((element) => ({
-        x: Number(element.getAttribute('cx')),
-        y: Number(element.getAttribute('cy')),
-      }));
-      expect(vertices[index]![0]).toBeCloseTo(center.x, 5);
-      expect(vertices[index]![1]).toBeCloseTo(center.y, 5);
+    const plottedPoints: number[][][] = [];
+    for (let index = 0; index < 7; index++) {
+      const line = legs.nth(index);
+      const points = (await line.getAttribute('points'))!
+        .trim()
+        .split(/\s+/)
+        .map((pair) => pair.split(',').map(Number));
+      plottedPoints.push(points);
+      const head = (await chart
+        .locator('[data-route-arrow]')
+        .nth(index)
+        .getAttribute('points'))!
+        .trim()
+        .split(/\s+/)
+        .map((pair) => pair.split(',').map(Number));
+      expect(points.at(-1)).toEqual(head[1]);
+      expect(points).toHaveLength(index === 4 || index === 5 ? 4 : 2);
+      for (const [name, endpoint, arriving] of [
+        [plottedWorlds[index], points[0], false],
+        [plottedWorlds[index + 1], points.at(-1), true],
+      ] as const) {
+        const center = await page
+          .getByRole('button', { name: new RegExp(`^Inspect ${name},`) })
+          .locator('circle')
+          .nth(1)
+          .evaluate((element) => ({
+            x: Number(element.getAttribute('cx')),
+            y: Number(element.getAttribute('cy')),
+            radius: Number(element.getAttribute('r')),
+          }));
+        if (arriving) {
+          expect(
+            Math.hypot(endpoint![0]! - center.x, endpoint![1]! - center.y),
+          ).toBeCloseTo(center.radius + 1);
+        } else {
+          expect(endpoint![0]).toBeCloseTo(center.x, 5);
+          expect(endpoint![1]).toBeCloseTo(center.y, 5);
+        }
+      }
     }
+    const outward = plottedPoints[4]![1]!;
+    const returning = plottedPoints[5]![2]!;
+    expect(
+      Math.hypot(outward[0]! - returning[0]!, outward[1]! - returning[1]!),
+    ).toBeCloseTo(7);
+    await expect(legs.nth(4)).toHaveAttribute('data-traversals', '2');
+    await expect(legs.nth(5)).toHaveAttribute('data-traversals', '2');
+    await expect(chart.locator('[data-route-arrow]')).toHaveCount(7);
+    expect(
+      await page.evaluate(
+        'getComputedStyle(document.querySelector("[data-route-arrow]")).fill',
+      ),
+    ).toBe('none');
+    expect(
+      await page.evaluate(
+        'parseFloat(getComputedStyle(document.querySelector("polyline[data-route-leg]")).strokeWidth)',
+      ),
+    ).toBeLessThan(2);
+    await page
+      .getByRole('navigation', { name: 'Planner navigation' })
+      .getByRole('button', { name: 'Chart', exact: true })
+      .click();
     await capture('paid-return-chart');
     await chartWorld('Last Ember').focus();
     await page.keyboard.press('Space');

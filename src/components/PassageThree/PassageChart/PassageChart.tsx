@@ -1,13 +1,8 @@
+import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { motion, useReducedMotion } from 'motion/react';
-import {
-  address,
-  hexes,
-  point,
-  worldById,
-  worlds,
-  type Stop,
-} from '../presentation';
+import { address, hexes, point, worlds, type Stop } from '../presentation';
+import { routeLegs } from './routeGeometry';
 import styles from './PassageChart.module.css';
 
 type Props = {
@@ -30,6 +25,17 @@ export function PassageChart({
   onHighlight,
 }: Props) {
   const reduced = useReducedMotion();
+  const [largeMarkers, setLargeMarkers] = useState(
+    () => window.matchMedia('(max-width: 700px)').matches,
+  );
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 700px)');
+    const update = () => setLargeMarkers(query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+  const markerRadius = largeMarkers ? 11 : 7;
+  const legs = routeLegs(stops, markerRadius);
   return (
     <svg
       className={styles.chart}
@@ -54,21 +60,32 @@ export function PassageChart({
           0{col}
         </text>
       ))}
-      {stops.length > 0 && (
-        <motion.polyline
-          key={stops.at(-1)?.world}
+      {legs.length > 0 && (
+        <motion.g
+          key={stops.map((stop) => stop.world).join('-')}
           className={styles.route}
-          points={stops
-            .map((stop) => {
-              const p = point(worldById(stop.world));
-              return `${p.x},${p.y}`;
-            })
-            .join(' ')}
           initial={reduced ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: reduced ? 0 : 0.22 }}
           aria-hidden="true"
-        />
+        >
+          {legs.map((leg) => (
+            <g key={leg.id}>
+              <polyline
+                data-route-leg={leg.id}
+                data-from={leg.from}
+                data-to={leg.to}
+                data-traversals={leg.traversals}
+                points={leg.points.map((p) => `${p.x},${p.y}`).join(' ')}
+              />
+              <polyline
+                data-route-arrow={leg.id}
+                className={styles.arrow}
+                points={leg.arrow.map((p) => `${p.x},${p.y}`).join(' ')}
+              />
+            </g>
+          ))}
+        </motion.g>
       )}
       {worlds.map((world) => {
         const p = point(world);
@@ -123,7 +140,7 @@ export function PassageChart({
               className={styles.star}
               cx={p.x}
               cy={p.y}
-              r={index >= 0 ? 7 : 3.5}
+              r={index >= 0 ? markerRadius : 3.5}
             />
             <text className={styles.name} x={p.x + 15} y={p.y - 11}>
               {world.name.split(' ')[0]}

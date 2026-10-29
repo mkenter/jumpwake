@@ -52,8 +52,8 @@ views, with one shared navigation row in both header states. Targets have an 80p
 scroll margin to clear the sticky row. The initial mobile composition keeps the
 full logo at a readable 272–320px width and reduces the wordmark and spacing.
 
-Fine gold rules, beveled instrument frames, a chart-heading compass and numbered
-manifest events extend the stationery theme. The chart remains open and its
+Fine gold rules, frames with rounded top-left and bottom-right corners, a
+chart-heading compass and numbered manifest events extend the stationery theme. The chart remains open and its
 geometry, labels and hit targets retain their existing sizes. No speculative
 navigation destinations, route parameters or world data are introduced.
 
@@ -64,7 +64,10 @@ purchases and return visits. Useful descriptions from the design study are
 retained as world context; fuel availability comes from engine rules.
 
 The summary uses the engine's totals. The chart follows jumps in order, including
-return legs; each world remains one inspection target. The manifest shows a
+return legs. Repeated world-to-world legs use separate parallel lanes that taper
+into the world markers. Each thin plum line terminates at an open arrowhead on
+the destination marker's edge. Lane spacing is presentation-only and does not
+change coordinates or distances. Each world remains one inspection target. The manifest shows a
 departure entry followed by every jump and refueling event in chronological order.
 Each entry has a unique occurrence ID, including repeated visits to the same
 world. World highlighting links all its events, and inspection lists those event

@@ -42,37 +42,9 @@
   border-top: 3px double var(--gold-line);
   padding: 12px 24px 16px;
 }
-.journeyControls::before,
-.journeyControls::after,
-.manifest::before,
-.manifest::after {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  pointer-events: none;
-}
-.journeyControls::before,
-.manifest::before {
-  top: -3px;
-  left: -1px;
-  background: linear-gradient(
-    135deg,
-    var(--paper) 0 10px,
-    var(--gold-line) 10px 11px,
-    transparent 11px
-  );
-}
-.journeyControls::after,
-.manifest::after {
-  right: -1px;
-  bottom: -1px;
-  background: linear-gradient(
-    315deg,
-    var(--paper) 0 10px,
-    var(--gold-line) 10px 11px,
-    transparent 11px
-  );
+.journeyControls,
+.manifest {
+  border-radius: 12px 0 12px 0;
 }
 .controlHeading {
   display: flex;
