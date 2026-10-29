@@ -5,10 +5,15 @@ tabletop RPGs. A focused play aid for plotting journeys across a hex subsector.
 
 ## Current status
 
-Application foundation only: a responsive shell, provisional CSS tokens, one
-pure hex-distance utility, and development checks. Map rendering, fuel accounting,
-route optimization, and itineraries are not implemented. No setting data or SRD
-text is included.
+Application foundation plus visual studies at `/explore`. Design 3
+(`/explore?design=3`) is an interactive passage prototype: choose endpoints,
+inspect worlds and stops, and switch between authored example journeys. It uses
+shared fictional fixtures; routes and fuel decisions are not calculated.
+
+The production shell and pure hex-distance utility remain separate from the
+studies. Routing and fuel accounting are not implemented. No SRD text is included.
+See the [Design 3 review](review-artifacts/design-3-review.md) for the interaction
+critique and comparable screenshots.
 
 ## Development
 

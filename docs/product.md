@@ -19,6 +19,19 @@ at the table.
 
 Current capabilities are documented in the [README](../README.md).
 
+## Design 3 interactive study
+
+Design 3 at `/explore?design=3` is the chosen visual foundation. Its prototype
+keeps endpoint changes explicit and world inspection separate from passage
+selection. The manifest holds travel decisions; world details hold local context
+and fuel sources. On narrow screens, chart and manifest share endpoint state,
+and inspection opens in a dismissible sheet.
+
+The shared fixtures provide only Aster–Orison and Aster–Vela passages. Other pairs
+show a missing-example state, not an engine verdict on reachability. Same-world
+endpoints and incomplete selection have separate states. No navigation/fuel
+symbol system or new rules requirements are established by this study.
+
 ## Open functional decisions
 
 - Decide required final reserves and how to present unreachable destinations and

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-for (const design of [1, 2, 3]) {
+// Design 3 has its own journey and responsive inspection coverage.
+for (const design of [1, 2]) {
   for (const viewport of [
     { name: 'desktop', width: 1440, height: 1100 },
     { name: 'mobile', width: 390, height: 844 },
