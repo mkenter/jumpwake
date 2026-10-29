@@ -71,12 +71,15 @@ export function PassageChart({
         >
           {legs.map((leg) => (
             <g key={leg.id}>
-              <polyline
+              <path
                 data-route-leg={leg.id}
                 data-from={leg.from}
                 data-to={leg.to}
                 data-traversals={leg.traversals}
-                points={leg.points.map((p) => `${p.x},${p.y}`).join(' ')}
+                d={`M ${leg.points[0]!.x} ${leg.points[0]!.y} C ${leg.points
+                  .slice(1)
+                  .map((p) => `${p.x} ${p.y}`)
+                  .join(' ')}`}
               />
               <polyline
                 data-route-arrow={leg.id}

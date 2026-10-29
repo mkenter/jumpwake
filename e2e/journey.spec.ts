@@ -180,7 +180,7 @@ for (const [width, height] of [
       .evaluateAll((nodes) => nodes.map((node) => node.id));
     expect(new Set(ids).size).toBe(ids.length);
     await switchView('Chart');
-    const legs = page.locator('polyline[data-route-leg]');
+    const legs = page.locator('path[data-route-leg]');
     await expect(legs).toHaveCount(7);
     const plottedWorlds = [
       'Aster Quay',
@@ -195,10 +195,16 @@ for (const [width, height] of [
     const plottedPoints: number[][][] = [];
     for (let index = 0; index < 7; index++) {
       const line = legs.nth(index);
-      const points = (await line.getAttribute('points'))!
+      const path = (await line.getAttribute('d'))!;
+      expect(path).toContain(' C ');
+      const coordinates = path
+        .replace(/[MC]/g, '')
         .trim()
         .split(/\s+/)
-        .map((pair) => pair.split(',').map(Number));
+        .map(Number);
+      const points = Array.from({ length: 4 }, (_, pointIndex) =>
+        coordinates.slice(pointIndex * 2, pointIndex * 2 + 2),
+      );
       plottedPoints.push(points);
       const head = (await chart
         .locator('[data-route-arrow]')
@@ -208,7 +214,7 @@ for (const [width, height] of [
         .split(/\s+/)
         .map((pair) => pair.split(',').map(Number));
       expect(points.at(-1)).toEqual(head[1]);
-      expect(points).toHaveLength(index === 4 || index === 5 ? 4 : 2);
+      expect(points).toHaveLength(4);
       for (const [name, endpoint, arriving] of [
         [plottedWorlds[index], points[0], false],
         [plottedWorlds[index + 1], points.at(-1), true],
@@ -232,11 +238,31 @@ for (const [width, height] of [
         }
       }
     }
-    const outward = plottedPoints[4]![1]!;
-    const returning = plottedPoints[5]![2]!;
-    expect(
-      Math.hypot(outward[0]! - returning[0]!, outward[1]! - returning[1]!),
-    ).toBeCloseTo(7);
+    const middle = (points: number[][]) => [
+      (points[0]![0]! +
+        3 * points[1]![0]! +
+        3 * points[2]![0]! +
+        points[3]![0]!) /
+        8,
+      (points[0]![1]! +
+        3 * points[1]![1]! +
+        3 * points[2]![1]! +
+        points[3]![1]!) /
+        8,
+    ];
+    const outward = middle(plottedPoints[4]!);
+    const returning = middle(plottedPoints[5]!);
+    // Compare across the shared sweep, not along it: the visible curves are
+    // trimmed at opposite markers, so their halfway parameters are staggered.
+    const edgeX = plottedPoints[5]![0]![0]! - plottedPoints[4]![0]![0]!;
+    const edgeY = plottedPoints[5]![0]![1]! - plottedPoints[4]![0]![1]!;
+    const separation = Math.abs(
+      (-(outward[0]! - returning[0]!) * edgeY +
+        (outward[1]! - returning[1]!) * edgeX) /
+        Math.hypot(edgeX, edgeY),
+    );
+    expect(separation).toBeGreaterThan(5);
+    expect(separation).toBeLessThan(10);
     await expect(legs.nth(4)).toHaveAttribute('data-traversals', '2');
     await expect(legs.nth(5)).toHaveAttribute('data-traversals', '2');
     await expect(chart.locator('[data-route-arrow]')).toHaveCount(7);
@@ -247,7 +273,7 @@ for (const [width, height] of [
     ).toBe('none');
     expect(
       await page.evaluate(
-        'parseFloat(getComputedStyle(document.querySelector("polyline[data-route-leg]")).strokeWidth)',
+        'parseFloat(getComputedStyle(document.querySelector("path[data-route-leg]")).strokeWidth)',
       ),
     ).toBeLessThan(2);
     await page

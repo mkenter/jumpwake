@@ -17,13 +17,13 @@ function visits(ids: string[]): Stop[] {
 }
 
 describe('route chart lanes', () => {
-  it('keeps ordinary legs straight and arrows pointing toward the next world', () => {
+  it('bows ordinary legs gently and aligns arrowheads with the arrival tangent', () => {
     const legs = routeLegs(visits(['aster', 'drift', 'echo']));
     expect(legs).toHaveLength(2);
     for (const leg of legs) {
       const start = point(worldById(leg.from));
       const end = point(worldById(leg.to));
-      expect(leg.points).toHaveLength(2);
+      expect(leg.points).toHaveLength(4);
       expect(leg.points[0]).toEqual(start);
       expect(leg.points.at(-1)).toEqual(leg.arrow[1]);
       const [left, tip, right] = leg.arrow;
@@ -31,10 +31,20 @@ describe('route chart lanes', () => {
       expect(Math.hypot(end.x - tip!.x, end.y - tip!.y)).toBeCloseTo(8);
       const dx = tip!.x - back.x;
       const dy = tip!.y - back.y;
-      expect(dx * (end.x - start.x) + dy * (end.y - start.y)).toBeGreaterThan(
-        0,
-      );
-      expect(dx * (end.y - start.y) - dy * (end.x - start.x)).toBeCloseTo(0);
+      const approach = leg.points[2]!;
+      expect(
+        dx * (tip!.x - approach.x) + dy * (tip!.y - approach.y),
+      ).toBeGreaterThan(0);
+      expect(
+        dx * (tip!.y - approach.y) - dy * (tip!.x - approach.x),
+      ).toBeCloseTo(0);
+      const control = leg.points[1]!;
+      expect(
+        Math.abs(
+          (control.x - start.x) * (end.y - start.y) -
+            (control.y - start.y) * (end.x - start.x),
+        ),
+      ).toBeGreaterThan(1);
     }
   });
 
@@ -44,20 +54,34 @@ describe('route chart lanes', () => {
     expect(back!.traversals).toBe(2);
     expect(out!.points[0]).toEqual(point(worldById('serein')));
     expect(back!.points[0]).toEqual(point(worldById('ilex')));
-    const outward = out!.points[1]!;
-    const returning = back!.points[2]!;
-    expect(
-      Math.hypot(outward.x - returning.x, outward.y - returning.y),
-    ).toBeCloseTo(7);
+    const middle = (points: { x: number; y: number }[]) => ({
+      x:
+        (points[0]!.x + 3 * points[1]!.x + 3 * points[2]!.x + points[3]!.x) / 8,
+      y:
+        (points[0]!.y + 3 * points[1]!.y + 3 * points[2]!.y + points[3]!.y) / 8,
+    });
+    const outward = middle(out!.points);
+    const returning = middle(back!.points);
+    const dx = back!.points[0]!.x - out!.points[0]!.x;
+    const dy = back!.points[0]!.y - out!.points[0]!.y;
+    const separation = Math.abs(
+      (-(outward.x - returning.x) * dy + (outward.y - returning.y) * dx) /
+        Math.hypot(dx, dy),
+    );
+    expect(separation).toBeGreaterThan(5);
+    expect(separation).toBeLessThan(10);
     for (const leg of [out!, back!]) {
       const end = point(worldById(leg.to));
       expect(leg.points.at(-1)).toEqual(leg.arrow[1]);
       const approach = leg.points.at(-2)!;
       const tip = leg.arrow[1]!;
       expect(Math.hypot(end.x - tip.x, end.y - tip.y)).toBeCloseTo(8);
+      const left = leg.arrow[0]!;
+      const right = leg.arrow[2]!;
+      const arrowX = tip.x - (left.x + right.x) / 2;
+      const arrowY = tip.y - (left.y + right.y) / 2;
       expect(
-        (end.x - tip.x) * (end.y - approach.y) -
-          (end.y - tip.y) * (end.x - approach.x),
+        arrowX * (tip.y - approach.y) - arrowY * (tip.x - approach.x),
       ).toBeCloseTo(0);
     }
   });
@@ -82,7 +106,7 @@ describe('route chart lanes', () => {
   it('handles three traversals and repeated travel in the same direction', () => {
     const triple = routeLegs(visits(['serein', 'ilex', 'serein', 'ilex']));
     expect(triple.map((leg) => leg.traversals)).toEqual([3, 3, 3]);
-    expect(triple.map((leg) => leg.points.length)).toEqual([4, 2, 4]);
+    expect(triple.map((leg) => leg.points.length)).toEqual([4, 4, 4]);
     const sameDirection = routeLegs(
       visits(['serein', 'ilex', 'orison', 'serein', 'ilex']),
     );

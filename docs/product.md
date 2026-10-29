@@ -64,11 +64,12 @@ purchases and return visits. Useful descriptions from the design study are
 retained as world context; fuel availability comes from engine rules.
 
 The summary uses the engine's totals. The chart follows jumps in order, including
-return legs. Repeated world-to-world legs use separate parallel lanes that taper
-into the world markers. Each thin plum line terminates at an open arrowhead on
-the destination marker's edge. Lane spacing is presentation-only and does not
-change coordinates or distances. Each world remains one inspection target. The manifest shows a
-departure entry followed by every jump and refueling event in chronological order.
+return legs. Each jump follows a shallow Bézier arc inspired by vintage travel
+maps. Repeated world-to-world legs use neighboring arcs along the same sweep.
+Each thin plum line terminates at an open arrowhead on the destination marker's
+edge. Lane spacing is presentation-only and does not
+change coordinates or distances. Each world remains one inspection target. The
+manifest shows a departure entry followed by every jump and refueling event in chronological order.
 Each entry has a unique occurrence ID, including repeated visits to the same
 world. World highlighting links all its events, and inspection lists those event
 numbers. Desktop world inspection sits below the manifest heading, ahead of its events,
