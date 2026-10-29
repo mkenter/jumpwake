@@ -12,6 +12,7 @@ import { PassageChart } from './PassageChart';
 import { WorldInspection, type Inspection } from './WorldInspection';
 import { createRouter } from '../../engine';
 import { EMBER_REACH } from '../../data/emberReach';
+import { JumpwakeLogo } from '../JumpwakeLogo';
 import styles from './PassageThree.module.css';
 
 const router = createRouter(EMBER_REACH);
@@ -109,7 +110,12 @@ export function PassageThree() {
       <header className={styles.header}>
         <div className={styles.brandLockup}>
           <a className={styles.brand} href="/" aria-label="Jumpwake home">
-            J / W
+            <JumpwakeLogo decorative className={styles.fullLogo} />
+            <JumpwakeLogo
+              variant="compact"
+              decorative
+              className={styles.compactLogo}
+            />
           </a>
           <span className={styles.wordmark}>
             JUMPWAKE<small>PASSENGER NAVIGATION SERVICE</small>

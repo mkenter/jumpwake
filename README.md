@@ -41,15 +41,16 @@ npm run dev
 Open the local URL printed by Vite. No accounts, environment variables, or backend
 services are required.
 
-| Command              | Purpose                                                      |
-| -------------------- | ------------------------------------------------------------ |
-| `npm run dev`        | Start the development server                                 |
-| `npm run check`      | Check formatting, lint, TypeScript, and unit/component tests |
-| `npm run test:watch` | Watch unit/component tests                                   |
-| `npm run format`     | Apply formatting                                             |
-| `npm run build`      | Type-check and build static assets into `dist/`              |
-| `npm run preview`    | Serve the production build locally                           |
-| `npm run test:e2e`   | Build and run the Chromium journey tests                     |
+| Command               | Purpose                                                      |
+| --------------------- | ------------------------------------------------------------ |
+| `npm run dev`         | Start the development server                                 |
+| `npm run check`       | Check formatting, lint, TypeScript, and unit/component tests |
+| `npm run test:watch`  | Watch unit/component tests                                   |
+| `npm run format`      | Apply formatting                                             |
+| `npm run build`       | Type-check and build static assets into `dist/`              |
+| `npm run build:logos` | Export full and compact SVG identities from shared geometry  |
+| `npm run preview`     | Serve the production build locally                           |
+| `npm run test:e2e`    | Build and run the Chromium journey tests                     |
 
 Before the first browser test, install Chromium:
 
@@ -67,6 +68,13 @@ the production build, and the journey tests.
 - [Product requirements and scope](docs/product.md)
 - [Rules references and open questions](docs/rules.md)
 - [Coding guide](AGENTS.md)
+
+The logo's hand-drawn SVG geometry lives in
+`src/components/JumpwakeLogo/JumpwakeLogo.tsx`. After changing it, run
+`npm run build:logos` and commit the regenerated standalone assets in
+`public/brand/`. The exports use fixed palette colors and outlined lettering;
+they need no fonts, stylesheets, or external resources. The ivory badge is
+intentionally opaque so the orbital sweeps disappear behind it.
 
 ## Licensing status
 

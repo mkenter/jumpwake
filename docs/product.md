@@ -37,6 +37,13 @@ vertical projection is applied consistently to hex geometry, world positions,
 route vertices and hit targets, while glyphs retain their proportions. This is
 presentation spacing, not a change to engine coordinates or parsec distances.
 
+The masthead pairs the orbital J/W identity with the Jumpwake wordmark: the
+monogram supplies the emblem while the wordmark keeps the application name
+explicit. The full mark is 256px wide in a 128px masthead, or 224px wide in a
+116px masthead at laptop widths. Below 960px, the same framed monogram appears
+without ornament in an 80px masthead. Only the immediate brand placement changes;
+the planner and navigation retain their existing behavior.
+
 One authoritative Ember Reach dataset supplies both the engine and chart. Its
 15 authored systems include dry worlds, paid ports, gas giants and isolated Last
 Ember. Orison, Serein and Ilex extend the original engine fixture to exercise
