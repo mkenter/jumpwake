@@ -32,14 +32,18 @@ show a missing-example state, not an engine verdict on reachability. Same-world
 endpoints and incomplete selection have separate states. No navigation/fuel
 symbol system or new rules requirements are established by this study.
 
-## Open functional decisions
+## Routing decisions
 
-- Decide required final reserves and how to present unreachable destinations and
-  stops with no usable fuel.
-- Define a stable result order when cost, jump count, and total distance all tie.
-
-These are agreed prototype requirements. Mechanics and deliberate simplifications
-are tracked separately in [rules.md](rules.md).
+Arrival requires no reserve. Unreachable routes have an explicit result status.
+After cost, jumps, and distance, ties compare the sequence of
+`(next system ID, departure fuel)` pairs lexicographically, using ascending ID
+and then ascending fuel. The engine and authored Ember Reach fixture are
+implemented; the engine completed its independent correctness review at
+`defd9df`. It is not yet connected to the Design 3 UI, whose map and manifest
+still use authored examples. Integrating engine results and presenting
+unreachable routes and stops with no usable fuel remain UI work. Mechanics,
+algorithm details, and deliberate simplifications are tracked in
+[rules.md](rules.md).
 
 ## Explicitly deferred
 

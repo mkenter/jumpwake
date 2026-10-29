@@ -5,15 +5,26 @@ tabletop RPGs. A focused play aid for plotting journeys across a hex subsector.
 
 ## Current status
 
-Application foundation plus visual studies at `/explore`. Design 3
-(`/explore?design=3`) is an interactive passage prototype: choose endpoints,
-inspect worlds and stops, and switch between authored example journeys. It uses
-shared fictional fixtures; routes and fuel decisions are not calculated.
+Responsive application shell plus visual studies at `/explore`. Design 3
+(`/explore?design=3`) is the chosen visual foundation and a working interactive
+passage prototype: choose endpoints, inspect worlds and stops, and switch between
+authored example journeys. It uses shared fictional fixtures; its routes and fuel
+decisions are not calculated. The production shell remains separate from the
+studies. See the [Design 3 review](review-artifacts/design-3-review.md) for the
+interaction critique and comparable screenshots.
 
-The production shell and pure hex-distance utility remain separate from the
-studies. Routing and fuel accounting are not implemented. No SRD text is included.
-See the [Design 3 review](review-artifacts/design-3-review.md) for the interaction
-critique and comparable screenshots.
+The routing engine is implemented and completed its independent correctness
+review at `defd9df`, but is not yet connected to the UI. It provides
+Traveller subsector geometry, jump-fuel accounting, fuel purchasing and scooping,
+and deterministic cost optimization. The original Ember Reach fixture exercises
+free refueling detours and unreachable destinations. Connecting engine results to
+the Design 3 map and itinerary remains to be done. No SRD text is included.
+
+The engine exports `createRouter`, coordinate conversions, and fuel rules through
+`src/engine/index.ts`. Construct a router from `EMBER_REACH` in
+`src/data/emberReach.ts`, then call `findRoute('aster', 'cinder')`. See
+[the rules document](docs/rules.md#routing-implementation) for the algorithm,
+complexity, assumptions, and result contract.
 
 ## Development
 
