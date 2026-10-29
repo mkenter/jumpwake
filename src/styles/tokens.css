@@ -1,20 +1,7 @@
 :root {
-  color-scheme: dark;
-
-  /* Provisional foundations; revisit during deliberate map design. */
-  --color-background: #101b23;
-  --color-surface: #1a2a34;
-  --color-text: #eef1e9;
-  --color-text-muted: #adbbc1;
-  --color-accent: #e6bc78;
-  --color-border: #3a4d58;
+  color-scheme: light;
+  --color-background: #f5f4ef;
+  --color-text: #354248;
+  --color-accent: #75566b;
   --font-body: 'Avenir Next', Avenir, 'Segoe UI', sans-serif;
-  --font-instrument: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.5rem;
-  --space-6: 2rem;
-  --space-7: 3rem;
-  --radius-control: 0.25rem;
 }

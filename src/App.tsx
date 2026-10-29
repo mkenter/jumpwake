@@ -1,10 +1,9 @@
 import { MotionConfig } from 'motion/react';
-import { AppShell } from './components';
-
+import { PassageThree } from './components';
 export function App() {
   return (
     <MotionConfig reducedMotion="user">
-      <AppShell />
+      <PassageThree />
     </MotionConfig>
   );
 }

@@ -1,0 +1,96 @@
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 650 / 800;
+  max-height: 1040px;
+  overflow: hidden;
+}
+.grid polygon {
+  fill: none;
+  stroke: #aeb9ae;
+  stroke-width: 0.75;
+  vector-effect: non-scaling-stroke;
+}
+.coordinate {
+  font:
+    10px 'Avenir Next',
+    sans-serif;
+  fill: var(--muted);
+}
+.route {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.world {
+  cursor: pointer;
+  outline: none !important;
+}
+.hit {
+  fill: transparent;
+}
+.star {
+  fill: var(--ink);
+  stroke: var(--paper);
+  stroke-width: 2;
+  pointer-events: none;
+}
+.onRoute .star {
+  fill: var(--accent);
+}
+.halo {
+  fill: transparent;
+  stroke: transparent;
+  pointer-events: none;
+}
+.selected .halo {
+  fill: #75566b0c;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+.highlighted .halo {
+  stroke: var(--accent);
+  stroke-dasharray: 3 4;
+}
+.world:focus-visible .hit {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.world:hover .name,
+.highlighted .name,
+.selected .name {
+  fill: var(--accent);
+}
+.name {
+  font-size: 16px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+.name,
+.code {
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.code {
+  font-size: 11px;
+  fill: var(--muted);
+}
+@media (max-width: 700px) {
+  .chart {
+    max-height: none;
+  }
+  .onRoute .star {
+    r: 11px;
+  }
+  .name {
+    font-size: 22px;
+  }
+  .code {
+    font-size: 17px;
+  }
+}

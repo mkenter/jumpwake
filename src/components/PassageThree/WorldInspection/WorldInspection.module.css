@@ -1,0 +1,128 @@
+.inspector {
+  margin-bottom: 20px;
+  padding: 16px;
+  border-top: 1px solid var(--ink);
+  border-left: 1px solid var(--line);
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.heading h2 {
+  font:
+    26px Georgia,
+    serif;
+}
+.heading h2:focus {
+  outline: none;
+}
+.heading h2 span {
+  display: block;
+  color: var(--muted);
+  font:
+    10px 'Avenir Next',
+    Avenir,
+    sans-serif;
+  margin-top: 7px;
+}
+.close {
+  background: none;
+  border: 0;
+  font-size: 24px;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+.relationship {
+  color: var(--accent);
+  font-size: 10px;
+}
+.inspector .note,
+.sheet .note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 12px;
+}
+.inspector .fuel,
+.sheet .fuel {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.fuel > span {
+  color: var(--muted);
+}
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.actions button {
+  background: transparent;
+  border: 1px solid var(--ink);
+  min-height: 44px;
+  padding: 8px 16px;
+  font-size: 11px;
+}
+.actions button:last-child {
+  background: var(--ink);
+  color: var(--paper);
+}
+.actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.sheet {
+  position: fixed;
+  inset: auto 0 0;
+  margin: 0;
+  padding: 16px 20px max(24px, env(safe-area-inset-bottom));
+  max-height: 85dvh;
+  width: 100%;
+  max-width: none;
+  overflow-y: auto;
+  border: 0;
+  border-top: 3px double var(--accent);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 -10px 40px #35424810;
+}
+.sheet::backdrop {
+  background: #3542484d;
+}
+.sheet .heading h2 {
+  font-size: 30px;
+}
+.sheet .heading h2 span {
+  display: block;
+  margin: 7px 0 0;
+}
+.sheet .relationship {
+  margin-top: 6px;
+}
+.sheet .note {
+  margin-top: 14px;
+  font-size: 13px;
+}
+.sheet .fuel {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.sheet .actions {
+  margin-top: 20px;
+}
+.sheet .actions button {
+  flex: 1;
+  font-size: 12px;
+}
+:global(body):has(.sheet[open]) {
+  overflow: hidden;
+}

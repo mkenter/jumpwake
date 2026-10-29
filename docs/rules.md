@@ -26,17 +26,88 @@ hosted by a third party, not the publisher. Page references use printed SRD numb
   travel/refueling duration, or fuel-delivery logistics. These exclusions are
   prototype scope choices, not claims that the SRD omits them.
 
-## Still unresolved
+## v0.1 policy decisions
 
-- Class D fuel: **Starport Class Services**, p. 172, lists unrefined fuel, while
-  **Fuel**, p. 109, names only A/B/C for purchase. Resolve this discrepancy before
-  deriving availability or prices for class D ports.
-- Whether to track refined/unrefined fuel and purification, or explicitly collapse
-  grades. Scooped fuel must not silently be treated as refined.
-- How the fixed ship's hull configuration satisfies scooping requirements; the
-  travel and equipment sections describe different hull cases.
-- Which authored systems offer each fuel source, including any water collection
-  or local restrictions; do not infer these solely from the presence of a world.
+- **Class D:** the services table (p. 172) explicitly offers unrefined fuel,
+  whereas the purchasing paragraph (p. 109) only names A/B/C. We follow the
+  services table for availability and apply the p. 109 unrefined price of
+  Cr100/ton to D as an explicit prototype interpretation, not an unambiguous
+  quoted rule. A/B offer both grades, C/D unrefined, E/X no port fuel.
+- **Grades:** transactions retain the source and grade. Both grades are usable;
+  purity, mixing, processing and fuel-related risk are not simulated. Consequently
+  refined fuel (Cr500/ton) is available but dominated by unrefined fuel in this
+  cost-only model. Scooped fuel is always labeled unrefined.
+- **Hull:** assume the fixed ship is streamlined and equipped with scoops,
+  satisfying the gas-giant case on p. 109. This is a scope assumption, not a
+  complete validated ship design; no processor is assumed.
+- **Facilities:** every authored system explicitly declares its starport class
+  and gas-giant presence. Port supplies and accessible giants are unlimited;
+  no local restrictions or water collection are modeled. Gas giants provide free
+  fuel even at E/X systems. Initial fuel is a sunk cost.
+- **Arrival:** no minimum reserve; reaching the destination ends the journey
+  without refueling there. Departure from and arrival at the same system needs
+  no actions. Unknown IDs and malformed maps are input errors, distinct from a
+  valid destination that cannot be reached.
+- **Geometry:** one-based columns 1–8 and rows 1–10; even display columns sit
+  half a row below odd columns. Convert with `q = column - 1` and
+  `r = row - 1 - floor(q / 2)`. Axial coordinates are never display addresses.
+  This offset agrees with the [Traveller Map coordinate convention](https://travellermap.com/doc/api).
+  Jumps connect only authored systems; empty-hex stops are excluded.
+
+## Routing implementation
+
+`createRouter` in `src/engine/routing.ts` snapshots and validates the map, sorts
+systems by ID using JavaScript code-unit order, and precomputes Jump-1/2/3
+neighbors. `findRoute(originId, destinationId)` runs lexicographic Dijkstra over
+(system, remaining fuel). Its four fuel levels are 0/20/40/60 tons. This is exact
+for a full initial tank, integer parsec distances, linear unlimited fuel prices,
+and no arrival reserve: fractional purchases cannot improve an optimal journey.
+
+Each edge optionally adds fuel and then makes one jump. All feasible departure
+fuel levels are considered, including carrying fuel through dry stops. Only the
+cheapest available source is needed under the grade policy above. Pairing fuel
+with jumps removes zero-cost refueling cycles; every edge increases jump count.
+A physical system may still be revisited with more fuel when a useful scooping
+detour requires it; a settled fuel state is never revisited.
+
+Labels minimize purchased credits, then jumps, then total parsecs. Final ties
+compare the sequence of `(next system ID, departure fuel)` pairs lexicographically,
+using ascending ID and then ascending fuel. This also deterministically selects
+fuel transactions without adding an arrival-reserve objective. Equal-state
+labels have identical future options. On a primary-score tie, path keys have
+the same length (one entry per jump), so appending the same continuation preserves
+their order. Every edge strictly increases the primary score through its jump
+count, even when scooping is free. The earliest settled destination state is
+optimal; exhausting the search returns `status: 'unreachable'`.
+
+For N systems, there are V = 4N states and at most E = O(N²) combined edges.
+Precomputation takes O(N²) time and space. A simple linear scan selects each next
+label; primary-score work is O(V² + E). Stored path keys and itineraries have
+length L ≤ V: including their comparisons/copies, the conservative query bound is
+O((V² + E)L) time and O(VL + N²) space, hence O(N³) time and O(N²) space.
+At most 80 systems fit this map. No heap, global cache, or rules framework is
+needed. Repeated queries reuse geometry but own fresh labels and result objects.
+
+Results contain chronologically ordered refueling and jump events, per-event
+fuel before/after, transaction source/grade/price, total purchased cost, jumps,
+distance, and final fuel. The authoritative **Ember Reach** dataset in
+`src/data/emberReach.ts` includes a free three-jump Aster–Cinder route versus a
+paid two-jump corridor, dry worlds, all six port classes, and isolated Last Ember.
+The integrated demo adds Orison, Serein and Ilex: Aster Quay–Orison costs Cr4,000
+and revisits Serein after scooping at Ilex. The UI preserves the event order and
+distinguishes repeated occurrences in the manifest.
+Tests compare tiny one-column and multidimensional networks against a separate
+one-ton Bellman–Ford solver across all dry/paid/free facility assignments and
+endpoint pairs. Its geometry uses display-grid breadth-first walks independent
+of the axial conversion and distance formula; all 6,400 subsector address pairs
+are cross-checked. Itinerary checks independently replay fuel, prices, distances,
+and locations, including repeated visits. Dedicated cases cover departure-fuel
+and code-unit ID ties and exhaustion of free-scooping cycles.
+
+Limitations remain the fixed ship, one subsector, deterministic facilities, and
+excluded time/risk/operating costs above. Fuel grades are recorded rather than
+tracked as separate tank inventories. This is a routing prototype, not a ship
+operations simulation.
 
 ## Content and licensing
 
