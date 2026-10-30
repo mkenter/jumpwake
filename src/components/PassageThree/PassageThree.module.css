@@ -96,13 +96,14 @@
 }
 .journeySummary {
   min-height: 48px;
+  padding-block: 8px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
   font-size: 12px;
 }
-.journeySummary p {
+.journeySummary > p {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 26px;
@@ -118,10 +119,6 @@
   color: var(--ink);
 }
 .summaryCost > span {
-  color: var(--muted);
-}
-.optimizationLabel {
-  font-size: 10px;
   color: var(--muted);
 }
 .sampleLink {
@@ -429,14 +426,13 @@
   }
   .journeySummary {
     min-height: 54px;
+    flex-wrap: wrap;
+    gap: 10px;
     font-size: 11px;
     padding: 9px 0;
   }
-  .journeySummary p {
+  .journeySummary > p {
     gap: 4px 14px;
-  }
-  .optimizationLabel {
-    display: none;
   }
   .mapPanel {
     width: calc(100% + 24px);

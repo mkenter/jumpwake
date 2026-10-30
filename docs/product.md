@@ -11,8 +11,10 @@ at the table.
 - A default 200-ton Jump-3 ship with scoops, streamlining, and 60 tons allocated
   to jump fuel, initially full. Vessel Particulars supports validated ship
   specifications and partial starting fuel through the same programmatic API.
-- Routes minimizing total **purchased fuel cost**, breaking ties by fewest jumps,
-  then shortest total distance, with deterministic results.
+- Two preferences over the same valid routes: **Lowest fuel cost** (initial)
+  minimizes purchased fuel credits, then jumps, then total parsecs;
+  **Fewest jumps** minimizes jumps, then purchased credits, then total parsecs.
+  Both retain the same deterministic itinerary tie-break.
 - Routes account for available fuel, refueling opportunities, and jump constraints.
 - A visual route and readable per-stop itinerary showing fuel decisions and costs.
 - A static client-side application, with no accounts or backend services.
@@ -41,6 +43,17 @@ in localStorage saves one applied vessel, validates restoration, and falls back
 to demonstration defaults for obsolete or malformed data. If storage is unavailable,
 planning still works for the visit. This is route configuration, not complete ship
 construction; capacity covers jump fuel only.
+
+A compact ruled comparison sits beside the passage summary, wrapping below it on
+phones. Native radio choices quote the preference, jump count and purchased fuel
+cost, with the selected quotation marked visually and programmatically. Selection
+updates one active summary, chart with directional arrows, manifest and fuel
+ledger. It preserves endpoints, applied particulars, planner view, scroll and
+masthead state, and clears obsolete inspection/highlighting. Both routes recalculate
+when endpoints or applied particulars change. If their complete event ledgers and
+remaining fuel match, one message explains that both preferences share the
+itinerary. Unreachable journeys retain the existing state without quotations.
+Preference selection lasts for the mounted planner; it is not saved locally.
 
 The restored Design 3 composition uses an open paper chart, slate typography,
 subtle plum routes and a manifest rail that reaches 340px on wider desktops. Both
@@ -99,18 +112,22 @@ routes and successful zero-jump same-world journeys have distinct states.
 ## Routing decisions
 
 Arrival requires no reserve. Unreachable routes have an explicit result status.
-After cost, jumps, and distance, ties compare the sequence of
+Lowest fuel cost orders purchased credits, jumps, then distance; Fewest jumps
+orders jumps, purchased credits, then distance. Subsequent ties compare the
+sequence of
 `(next system ID, departure fuel)` pairs lexicographically, using ascending ID
 and then ascending fuel. The engine is implemented and connected to the UI,
 following its independent correctness review at `defd9df`. Initial fuel is a sunk
-cost. Fuel balances show the quantity before and after each event, and the
-manifest reports fuel remaining on arrival. Mechanics, algorithm details, and
+cost. Fewest jumps makes no guarantee about total journey time. Although CT jumps
+last approximately a week each, in-system transit, refueling, preparation, delays
+and maintenance remain unmodeled; no precise duration is displayed. Fuel balances
+show the quantity before and after each event, and the manifest reports fuel remaining on arrival. Mechanics, algorithm details, and
 deliberate simplifications are tracked in [rules.md](rules.md).
 
 Browser tests cover calculated free and paid routes, repeated visits, unreachable
 and same-world destinations, keyboard and touch inspection, focus restoration,
-and desktop/mobile state retention. Captures are generated in ignored test
-results, rather than committed as historical screenshots. The original visual
+desktop/mobile state retention, preference selection and shared itineraries.
+Captures are generated in ignored test results, rather than committed as historical screenshots. The original visual
 explorations remain on their branches.
 
 ## Explicitly deferred

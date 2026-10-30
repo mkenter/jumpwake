@@ -1,5 +1,5 @@
 import { EMBER_REACH } from '../../data/emberReach';
-import type { RouteResult } from '../../engine';
+import type { RouteResult, RoutingPreference } from '../../engine';
 import type { FuelSource } from '../../rules/types';
 import {
   fuelSources,
@@ -8,6 +8,11 @@ import {
   type ShipSpecifications,
   type ShipOperatingState,
 } from '../../rules/classicTraveller1981';
+
+export const preferenceNames: Record<RoutingPreference, string> = {
+  'lowest-fuel-cost': 'Lowest fuel cost',
+  'fewest-jumps': 'Fewest jumps',
+};
 
 export function describeFuel(sources: readonly FuelSource[]) {
   return (
