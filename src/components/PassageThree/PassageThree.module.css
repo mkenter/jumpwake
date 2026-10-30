@@ -31,7 +31,7 @@
 .page main {
   display: flow-root;
 }
-.page :is([id], button, select) {
+.page :is([id], button, select, input) {
   scroll-margin-top: 80px;
   scroll-margin-bottom: 20px;
 }

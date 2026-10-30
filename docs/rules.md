@@ -37,14 +37,16 @@ jump consumption and priced sources. The engine imports no CT implementation.
 fuel state, fuel rules and starport data types. Application composition supplies
 that implementation explicitly; Ember Reach remains independently authored data.
 
-`createClassicTraveller1981Rules(ship, state)` is the API for the future
-vessel-particulars form. `ShipSpecifications` contains `displacementTons`,
+`createClassicTraveller1981Rules(ship, state)` powers the Vessel Particulars
+form. `ShipSpecifications` contains `displacementTons`,
 `jumpRating`, `jumpFuelCapacityTons`, `hasFuelScoops`, and `streamlined`;
 `ShipOperatingState` contains `initialFuelTons`. `validateShip(ship, state)`
 performs the same checks without constructing rules. Recreate rules and router
 when particulars or starting fuel change; construction snapshots their values.
 `SHIP`, `INITIAL_STATE`, and `classicTraveller1981` retain the demonstration
-configuration. The existing UI uses these defaults, including displayed particulars.
+configuration. The UI uses these defaults until a valid vessel is applied or
+restored from local storage. Apply creates memoized rules and a router for the
+active vessel; draft edits do not affect route calculation.
 
 Supported displacement is 100–5000 tons in multiples of 10; jump rating is an
 integer 1–6; capacity is whole tons from 1 to displacement; starting fuel is whole
