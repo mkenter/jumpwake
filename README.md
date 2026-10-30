@@ -22,12 +22,38 @@ fuel and a return visit to Serein, and Aster Quay → Last Ember for an unreacha
 destination. Ember Reach in `src/data/emberReach.ts` is the authoritative map;
 it also holds world descriptions. Display formatting lives with the planner.
 
-The engine exports `createRouter`, and coordinate conversions through
-`src/engine/index.ts`. Pass `classicTraveller1981` from `src/rules/classicTraveller1981` as the second
-argument to `createRouter`. Construct a router from `EMBER_REACH` in
-`src/data/emberReach.ts`, then call `findRoute('aster', 'cinder')`. See
-[the rules document](docs/rules.md#routing-implementation) for the algorithm,
-complexity, assumptions, and result contract.
+The engine exports `createRouter` and coordinate conversions through
+`src/engine/index.ts`. The application still uses the original 200-ton Jump-3
+vessel, but the programmatic API accepts configurable CT81 ships:
+
+```ts
+import { createRouter } from './src/engine';
+import { EMBER_REACH } from './src/data/emberReach';
+import { createClassicTraveller1981Rules } from './src/rules/classicTraveller1981';
+
+const rules = createClassicTraveller1981Rules(
+  {
+    displacementTons: 100,
+    jumpRating: 2,
+    jumpFuelCapacityTons: 27,
+    hasFuelScoops: true,
+    streamlined: true,
+  },
+  { initialFuelTons: 13 },
+);
+const router = createRouter(EMBER_REACH, rules);
+const route = router.findRoute('aster', 'cinder');
+```
+
+Specifications and starting state are validated and snapshotted. Create new rules
+and a router when either changes. Displacement supports 100–5000 tons in 10-ton
+increments, Jump-1–6, whole-ton jump-fuel capacity from 1 to displacement, and
+starting jump fuel from zero to capacity. Invalid or fractional inputs throw;
+no values are rounded. These are routing inputs, not complete CT ship-design
+validation. Jump fuel excludes power-plant fuel. Gas-giant access requires both
+scoops and streamlining. The vessel-particulars form is deferred.
+See [the rules document](docs/rules.md#routing-implementation) for exact fuel
+states, optimization, performance bounds, and operational limitations.
 
 ## Development
 
