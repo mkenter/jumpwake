@@ -223,3 +223,133 @@ describe('applied vessel and passage integration', () => {
     expect(screen.getByText(/Applied for this visit/)).toBeVisible();
   });
 });
+
+describe('passage preferences', () => {
+  it('switches the whole itinerary, clears obsolete inspection and highlights, and returns to the default', async () => {
+    const { user, manifest } = await passage();
+    const economical = screen.getByRole('radio', { name: /^Lowest fuel cost/ });
+    const fewer = screen.getByRole('radio', { name: /^Fewest jumps/ });
+    expect(economical).toBeChecked();
+    expect(fewer).toHaveAccessibleName(
+      'Fewest jumps, 2 jumps, Cr6,000 purchased fuel',
+    );
+    const originalLegs = Array.from(
+      document.querySelectorAll('[data-route-leg]'),
+      (node) => node.getAttribute('d'),
+    );
+    await user.hover(
+      screen.getByRole('button', { name: 'Inspect event 3, Drift Lantern' }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Inspect event 3, Drift Lantern' }),
+    );
+    await user.click(fewer);
+    expect(fewer).toBeChecked();
+    expect(fewer).toHaveFocus();
+    expect(screen.getByRole('status')).toHaveTextContent('2 jumps · 6 pc');
+    expect(screen.getByRole('status')).toHaveTextContent('Cr6,000');
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+    expect(document.querySelectorAll('[data-highlighted="true"]')).toHaveLength(
+      0,
+    );
+    expect(document.querySelectorAll('[data-route-leg]')).toHaveLength(2);
+    expect(document.querySelectorAll('[data-route-arrow]')).toHaveLength(2);
+    expect(within(manifest).getAllByRole('listitem')).toHaveLength(4);
+    expect(manifest).toHaveTextContent('Buy 60 t unrefined fuel at Cr100/t');
+    expect(manifest).toHaveTextContent('Arrival: 0 t');
+    expect(manifest).not.toHaveTextContent('Drift Lantern');
+    expect(manifest).not.toHaveTextContent('Scoop');
+    await user.click(
+      screen.getByRole('button', { name: 'Inspect event 3, Brass Ledger' }),
+    );
+    expect(screen.getByRole('complementary')).toHaveTextContent(
+      'Events 2, 3 on your passage',
+    );
+    await user.click(economical);
+    expect(screen.getByRole('status')).toHaveTextContent('3 jumps · 7 pc');
+    expect(screen.getByRole('status')).toHaveTextContent('Cr0');
+    expect(within(manifest).getAllByRole('listitem')).toHaveLength(6);
+    expect(
+      Array.from(document.querySelectorAll('[data-route-leg]'), (node) =>
+        node.getAttribute('d'),
+      ),
+    ).toEqual(originalLegs);
+    expect(screen.getByRole('combobox', { name: 'Origin' })).toHaveValue(
+      'aster',
+    );
+    expect(screen.getByRole('combobox', { name: 'Destination' })).toHaveValue(
+      'cinder',
+    );
+    expect(screen.getByLabelText('Active vessel')).toHaveTextContent(
+      '60/60 tons jump fuel',
+    );
+  });
+
+  it('recalculates both quotes for endpoints, shares identical itineraries, and retains the selected preference', async () => {
+    const { user, manifest } = await passage();
+    await user.click(screen.getByRole('radio', { name: /^Fewest jumps/ }));
+    const destination = screen.getByRole('combobox', { name: 'Destination' });
+    await user.selectOptions(destination, 'drift');
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    expect(screen.getByText(/share this itinerary/)).toBeVisible();
+    expect(screen.getByRole('status')).toHaveTextContent('1 jump · 2 pc');
+    await user.selectOptions(destination, 'last');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Destination unreachable',
+    );
+    expect(
+      screen.queryByRole('group', { name: 'Passage preference' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/share this itinerary/)).not.toBeInTheDocument();
+    await user.selectOptions(destination, 'aster');
+    expect(screen.getByRole('status')).toHaveTextContent('0 jumps');
+    expect(manifest).toHaveTextContent('Already at your destination');
+    await user.selectOptions(destination, 'cinder');
+    expect(screen.getByRole('radio', { name: /^Fewest jumps/ })).toBeChecked();
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Origin' }),
+      'brass',
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('1 jump · 3 pc');
+    expect(screen.getByText(/share this itinerary/)).toBeVisible();
+  });
+
+  it('uses the same applied particulars and partial fuel for both quotes', async () => {
+    const { user, manifest, edit, apply } = await passage();
+    await user.click(screen.getByRole('radio', { name: /^Fewest jumps/ }));
+    await edit();
+    const fuel = screen.getByRole('spinbutton', { name: 'Jump fuel aboard' });
+    await user.clear(fuel);
+    await user.type(fuel, '13');
+    await apply();
+    expect(
+      screen.getByRole('radio', { name: /^Lowest fuel cost/ }),
+    ).toHaveAccessibleName('Lowest fuel cost, 3 jumps, Cr2,700 purchased fuel');
+    expect(screen.getByRole('radio', { name: /^Fewest jumps/ })).toBeChecked();
+    expect(screen.getByRole('status')).toHaveTextContent('Cr10,700');
+    expect(manifest).toHaveTextContent('13 t aboard');
+    await user.click(screen.getByRole('radio', { name: /^Lowest fuel cost/ }));
+    expect(screen.getByRole('status')).toHaveTextContent('Cr2,700');
+    await edit();
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Fuel scoops fitted' }),
+    );
+    await apply();
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    expect(screen.getByText(/share this itinerary/)).toBeVisible();
+    expect(screen.getByRole('status')).toHaveTextContent('2 jumps');
+    expect(manifest).not.toHaveTextContent('Scoop');
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Origin' }),
+      'cinder',
+    );
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Destination' }),
+      'brass',
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Destination unreachable',
+    );
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+  });
+});

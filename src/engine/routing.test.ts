@@ -8,7 +8,12 @@ import {
 } from '../rules/classicTraveller1981';
 const createRouter = (systems: readonly StarSystem[]) =>
   createEngineRouter(systems, classicTraveller1981);
-import type { RouteResult } from './routing';
+import type { RouteResult, RoutingPreference } from './routing';
+
+const preferences: readonly RoutingPreference[] = [
+  'lowest-fuel-cost',
+  'fewest-jumps',
+];
 import type {
   StarSystem,
   Starport,
@@ -211,6 +216,7 @@ function referenceDetailed(
   end: number,
   ship: ShipSpecifications = SHIP,
   state: ShipOperatingState = INITIAL_STATE,
+  preference: RoutingPreference = 'lowest-fuel-cost',
 ) {
   const capacity = ship.jumpFuelCapacityTons;
   const width = capacity + 1;
@@ -219,7 +225,9 @@ function referenceDetailed(
   });
   labels[start * width + state.initialFuelTons] = { score: [0, 0, 0], key: [] };
   const less = (a: ReferenceLabel, b: ReferenceLabel) => {
-    for (let i = 0; i < 3; i++) {
+    // Keep cost/jumps/distance as factual totals; rank them independently.
+    const order = preference === 'fewest-jumps' ? [1, 0, 2] : [0, 1, 2];
+    for (const i of order) {
       if (a.score[i] !== b.score[i]) return a.score[i]! < b.score[i]!;
     }
     for (let i = 0; i < a.key.length; i++) {
@@ -281,29 +289,55 @@ function reference(systems: readonly StarSystem[], start: number, end: number) {
   return referenceDetailed(systems, start, end)?.score;
 }
 
-it('matches an independent ton-resolution solver for all fuel assignments and endpoint pairs', () => {
-  for (let mask = 0; mask < 81; mask++) {
-    let value = mask;
-    const systems = [1, 3, 5, 7].map((row, i) => {
-      const facility = value % 3;
-      value = Math.floor(value / 3);
-      return system(String(i), row, facility === 1 ? 'C' : 'X', facility === 2);
-    });
-    const router = createRouter(systems);
-    for (let start = 0; start < 4; start++)
-      for (let end = 0; end < 4; end++) {
-        const expected = reference(systems, start, end);
-        const result = router.findRoute(String(start), String(end));
-        expect(result.status).toBe(expected ? 'reachable' : 'unreachable');
-        if (result.status === 'reachable')
-          expect([
-            result.totalCostCredits,
-            result.jumpCount,
-            result.totalDistance,
-          ]).toEqual(expected);
-      }
-  }
-});
+it.each(preferences)(
+  'matches independent fuel assignments and endpoint pairs (%s)',
+  (preference) => {
+    for (let mask = 0; mask < 81; mask++) {
+      let value = mask;
+      const systems = [1, 3, 5, 7].map((row, i) => {
+        const facility = value % 3;
+        value = Math.floor(value / 3);
+        return system(
+          String(i),
+          row,
+          facility === 1 ? 'C' : 'X',
+          facility === 2,
+        );
+      });
+      const router = createRouter(systems);
+      for (let start = 0; start < 4; start++)
+        for (let end = 0; end < 4; end++) {
+          const expected = referenceDetailed(
+            systems,
+            start,
+            end,
+            SHIP,
+            INITIAL_STATE,
+            preference,
+          );
+          const result = router.findRoute(
+            String(start),
+            String(end),
+            preference,
+          );
+          expect(result.status).toBe(expected ? 'reachable' : 'unreachable');
+          if (result.status === 'reachable') {
+            expect([
+              result.totalCostCredits,
+              result.jumpCount,
+              result.totalDistance,
+            ]).toEqual(expected!.score);
+            expect(
+              result.events
+                .filter((e) => e.kind === 'jump')
+                .map((e) => [e.toId, e.fuelBeforeTons]),
+            ).toEqual(expected!.key);
+            expectBalanced(systems, result);
+          }
+        }
+    }
+  },
+);
 
 function expectBalanced(
   systems: readonly StarSystem[],
@@ -431,39 +465,56 @@ it.each([
   'matches the ton-resolution oracle on multidimensional networks: %j',
   (a, b, c, d) => {
     const hexes = [a, b, c, d];
-    for (let mask = 0; mask < 81; mask++) {
-      let value = mask;
-      const systems = hexes.map(([column, row], i) => {
-        const facility = value % 3;
-        value = Math.floor(value / 3);
-        const starport =
-          facility === 0
-            ? i % 2
-              ? 'E'
-              : 'X'
-            : (['A', 'B', 'C', 'D'] as const)[i]!;
-        return system(String(i), row!, starport, facility === 2, column!);
-      });
-      const router = createRouter(systems);
-      const reversed = createRouter(systems.toReversed());
-      for (let start = 0; start < 4; start++)
-        for (let end = 0; end < 4; end++) {
-          const expected = reference(systems, start, end);
-          const result = router.findRoute(String(start), String(end));
-          expect(result.status).toBe(expected ? 'reachable' : 'unreachable');
-          if (result.status === 'reachable') {
-            expect([
-              result.totalCostCredits,
-              result.jumpCount,
-              result.totalDistance,
-            ]).toEqual(expected);
-            expectBalanced(systems, result);
+    for (const preference of preferences)
+      for (let mask = 0; mask < 81; mask++) {
+        let value = mask;
+        const systems = hexes.map(([column, row], i) => {
+          const facility = value % 3;
+          value = Math.floor(value / 3);
+          const starport =
+            facility === 0
+              ? i % 2
+                ? 'E'
+                : 'X'
+              : (['A', 'B', 'C', 'D'] as const)[i]!;
+          return system(String(i), row!, starport, facility === 2, column!);
+        });
+        const router = createRouter(systems);
+        const reversed = createRouter(systems.toReversed());
+        for (let start = 0; start < 4; start++)
+          for (let end = 0; end < 4; end++) {
+            const expected = referenceDetailed(
+              systems,
+              start,
+              end,
+              SHIP,
+              INITIAL_STATE,
+              preference,
+            );
+            const result = router.findRoute(
+              String(start),
+              String(end),
+              preference,
+            );
+            expect(result.status).toBe(expected ? 'reachable' : 'unreachable');
+            if (result.status === 'reachable') {
+              expect([
+                result.totalCostCredits,
+                result.jumpCount,
+                result.totalDistance,
+              ]).toEqual(expected!.score);
+              expect(
+                result.events
+                  .filter((e) => e.kind === 'jump')
+                  .map((e) => [e.toId, e.fuelBeforeTons]),
+              ).toEqual(expected!.key);
+              expectBalanced(systems, result);
+            }
+            expect(
+              reversed.findRoute(String(start), String(end), preference),
+            ).toEqual(result);
           }
-          expect(reversed.findRoute(String(start), String(end))).toEqual(
-            result,
-          );
-        }
-    }
+      }
   },
 );
 
@@ -688,102 +739,113 @@ it('revisits systems to collect fuel with a different displacement and partial s
   expectBalanced(systems, result, ship, { initialFuelTons: 113 });
 });
 
-it('matches independent one-ton optimal scores and full tie keys for variable ships', () => {
-  const configurations = [
-    [100, 1, 17, 4, false, true],
-    [100, 2, 27, 13, true, true],
-    [110, 2, 31, 7, true, true],
-    [100, 2, 40, 0, true, true],
-    [200, 3, 63, 7, true, true],
-    [400, 4, 173, 31, true, true],
-    [400, 2, 87, 83, true, false],
-    [400, 4, 40, 0, true, true],
-    [200, 3, 60, 60, true, true],
-  ] as const;
-  for (const [
-    displacementTons,
-    jumpRating,
-    jumpFuelCapacityTons,
-    initialFuelTons,
-    hasFuelScoops,
-    streamlined,
-  ] of configurations) {
-    const ship = {
+it.each(preferences)(
+  'matches independent one-ton scores, keys and ledgers for variable ships (%s)',
+  (preference) => {
+    const configurations = [
+      [100, 1, 17, 4, false, true],
+      [100, 2, 27, 13, true, true],
+      [110, 2, 31, 7, true, true],
+      [100, 2, 40, 0, true, true],
+      [200, 3, 63, 7, true, true],
+      [400, 4, 173, 31, true, true],
+      [400, 2, 87, 83, true, false],
+      [400, 4, 40, 0, true, true],
+      [200, 3, 60, 60, true, true],
+    ] as const;
+    for (const [
       displacementTons,
       jumpRating,
       jumpFuelCapacityTons,
+      initialFuelTons,
       hasFuelScoops,
       streamlined,
-    };
-    const state = { initialFuelTons };
-    for (const hexes of [
-      [
-        [1, 1],
-        [1, 2],
-        [1, 4],
-        [1, 6],
-      ],
-      [
-        [2, 2],
-        [3, 3],
-        [4, 2],
-        [4, 5],
-      ],
-    ]) {
-      for (let mask = 0; mask < 81; mask++) {
-        let value = mask;
-        const systems = hexes.map(([column, row], i) => {
-          const facility = value % 3;
-          value = Math.floor(value / 3);
-          return system(
-            ['s', 'Z', 'a', 't'][i]!,
-            row!,
-            facility === 1 ? (['A', 'B', 'C', 'D'] as const)[i]! : 'X',
-            facility === 2,
-            column!,
+    ] of configurations) {
+      const ship = {
+        displacementTons,
+        jumpRating,
+        jumpFuelCapacityTons,
+        hasFuelScoops,
+        streamlined,
+      };
+      const state = { initialFuelTons };
+      for (const hexes of [
+        [
+          [1, 1],
+          [1, 2],
+          [1, 4],
+          [1, 6],
+        ],
+        [
+          [2, 2],
+          [3, 3],
+          [4, 2],
+          [4, 5],
+        ],
+      ]) {
+        for (let mask = 0; mask < 81; mask++) {
+          let value = mask;
+          const systems = hexes.map(([column, row], i) => {
+            const facility = value % 3;
+            value = Math.floor(value / 3);
+            return system(
+              ['s', 'Z', 'a', 't'][i]!,
+              row!,
+              facility === 1 ? (['A', 'B', 'C', 'D'] as const)[i]! : 'X',
+              facility === 2,
+              column!,
+            );
+          });
+          const router = configured(systems, ship, initialFuelTons);
+          const reversed = configured(
+            systems.toReversed(),
+            ship,
+            initialFuelTons,
           );
-        });
-        const router = configured(systems, ship, initialFuelTons);
-        const reversed = configured(
-          systems.toReversed(),
-          ship,
-          initialFuelTons,
-        );
-        for (let start = 0; start < 4; start++)
-          for (let end = 0; end < 4; end++) {
-            const expected = referenceDetailed(
-              systems,
-              start,
-              end,
-              ship,
-              state,
-            );
-            const result = router.findRoute(
-              systems[start]!.id,
-              systems[end]!.id,
-            );
-            expect(result.status).toBe(expected ? 'reachable' : 'unreachable');
-            if (result.status === 'reachable') {
-              expect([
-                result.totalCostCredits,
-                result.jumpCount,
-                result.totalDistance,
-              ]).toEqual(expected!.score);
+          for (let start = 0; start < 4; start++)
+            for (let end = 0; end < 4; end++) {
+              const expected = referenceDetailed(
+                systems,
+                start,
+                end,
+                ship,
+                state,
+                preference,
+              );
+              const result = router.findRoute(
+                systems[start]!.id,
+                systems[end]!.id,
+                preference,
+              );
+              expect(result.status).toBe(
+                expected ? 'reachable' : 'unreachable',
+              );
+              if (result.status === 'reachable') {
+                expect([
+                  result.totalCostCredits,
+                  result.jumpCount,
+                  result.totalDistance,
+                ]).toEqual(expected!.score);
+                expect(
+                  result.events
+                    .filter((e) => e.kind === 'jump')
+                    .map((e) => [e.toId, e.fuelBeforeTons]),
+                ).toEqual(expected!.key);
+                expectBalanced(systems, result, ship, state);
+              }
               expect(
-                result.events
-                  .filter((e) => e.kind === 'jump')
-                  .map((e) => [e.toId, e.fuelBeforeTons]),
-              ).toEqual(expected!.key);
-              expectBalanced(systems, result, ship, state);
+                reversed.findRoute(
+                  systems[start]!.id,
+                  systems[end]!.id,
+                  preference,
+                ),
+              ).toEqual(result);
             }
-            expect(
-              reversed.findRoute(systems[start]!.id, systems[end]!.id),
-            ).toEqual(result);
-          }
+        }
       }
     }
-  }
-});
+  },
+);
 
 it('handles large hulls and nonaligned fuel on a full 80-system subsector', () => {
   const systems = Array.from({ length: 80 }, (_, i) =>
@@ -807,4 +869,136 @@ it('handles large hulls and nonaligned fuel on a full 80-system subsector', () =
     expect(result.status).toBe('reachable');
     expectBalanced(systems, result, ship, { initialFuelTons: 47 });
   }
+});
+
+it('preserves all 225 complete default Ember Reach results from main at 590c6c6', async () => {
+  const router = createRouter(EMBER_REACH);
+  const routes = EMBER_REACH.flatMap((a) =>
+    EMBER_REACH.map((b) => router.findRoute(a.id, b.id)),
+  );
+  // Fingerprint includes every chronological event, transaction and fuel balance.
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(JSON.stringify(routes)),
+  );
+  expect(
+    Array.from(new Uint8Array(digest), (byte) =>
+      byte.toString(16).padStart(2, '0'),
+    ).join(''),
+  ).toBe('503412741f7ebd38e49f7e2a5966ba6a0eccf207bde3309d791b0e267bd93725');
+});
+
+it('matches both independent orders for all 225 Ember Reach pairs with interleaved queries', () => {
+  const router = createRouter(EMBER_REACH);
+  const reversed = createRouter(EMBER_REACH.toReversed());
+  for (const [start, origin] of EMBER_REACH.entries())
+    for (const [end, destination] of EMBER_REACH.entries()) {
+      const defaultResult = router.findRoute(origin.id, destination.id);
+      for (const preference of preferences) {
+        const expected = referenceDetailed(
+          EMBER_REACH,
+          start,
+          end,
+          SHIP,
+          INITIAL_STATE,
+          preference,
+        );
+        const result = router.findRoute(origin.id, destination.id, preference);
+        expect(result.status).toBe(expected ? 'reachable' : 'unreachable');
+        if (result.status === 'reachable') {
+          expect([
+            result.totalCostCredits,
+            result.jumpCount,
+            result.totalDistance,
+          ]).toEqual(expected!.score);
+          expect(
+            result.events
+              .filter((e) => e.kind === 'jump')
+              .map((e) => [e.toId, e.fuelBeforeTons]),
+          ).toEqual(expected!.key);
+          expectBalanced(EMBER_REACH, result);
+        }
+        expect(
+          reversed.findRoute(origin.id, destination.id, preference),
+        ).toEqual(result);
+      }
+      expect(router.findRoute(origin.id, destination.id)).toEqual(
+        defaultResult,
+      );
+    }
+});
+
+it('quotes the Aster Quay to Cinder Rest trade-off without changing travel rules', () => {
+  const router = createRouter(EMBER_REACH);
+  const economical = router.findRoute('aster', 'cinder', 'lowest-fuel-cost');
+  const fewer = router.findRoute('aster', 'cinder', 'fewest-jumps');
+  expect(economical).toMatchObject({
+    totalCostCredits: 0,
+    jumpCount: 3,
+    totalDistance: 7,
+  });
+  expect(stops(economical)).toEqual(['drift', 'echo', 'cinder']);
+  expect(fewer).toMatchObject({
+    totalCostCredits: 6000,
+    jumpCount: 2,
+    totalDistance: 6,
+  });
+  expect(stops(fewer)).toEqual(['brass', 'cinder']);
+  expectBalanced(EMBER_REACH, fewer);
+  expect(router.findRoute('aster', 'cinder')).toEqual(economical);
+  expect(router.findRoute('aster', 'drift', 'fewest-jumps')).toEqual(
+    router.findRoute('aster', 'drift'),
+  );
+});
+
+it.each(preferences)(
+  'keeps distance, code-unit IDs and departure fuel as subsequent ties (%s)',
+  (preference) => {
+    const distanceTied = [
+      system('start', 1),
+      system('z-short', 3, 'X', true),
+      system('a-long', 3, 'X', true, 2),
+      system('end', 5),
+    ];
+    expect(
+      stops(createRouter(distanceTied).findRoute('start', 'end', preference)),
+    ).toEqual(['z-short', 'end']);
+    const systems = [
+      system('s', 1),
+      system('Z', 3, 'E', true),
+      system('a', 4, 'X', true),
+      system('t', 5),
+    ];
+    const result = reached(
+      createRouter(systems).findRoute('s', 't', preference),
+    );
+    expect(stops(result)).toEqual(['Z', 't']);
+    expect(result.events.find((e) => e.kind === 'refuel')).toMatchObject({
+      systemId: 'Z',
+      fuelBeforeTons: 20,
+      fuelAfterTons: 40,
+      tons: 20,
+    });
+  },
+);
+
+it('breaks a fewest-jumps tie by purchased credits before distance and itinerary IDs', () => {
+  const systems = [
+    system('s', 1),
+    system('a-paid', 4, 'C'),
+    system('z-free', 3, 'X', true, 2),
+    system('t', 6),
+  ];
+  const result = createRouter(systems).findRoute('s', 't', 'fewest-jumps');
+  expect(stops(result)).toEqual(['z-free', 't']);
+  expect(result).toMatchObject({
+    totalCostCredits: 0,
+    jumpCount: 2,
+    totalDistance: 6,
+  });
+  expect(
+    referenceDetailed(systems, 0, 3, SHIP, INITIAL_STATE, 'fewest-jumps')
+      ?.score,
+  ).toEqual([0, 2, 6]);
+  expectBalanced(systems, result);
 });

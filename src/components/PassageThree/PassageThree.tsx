@@ -5,13 +5,15 @@ import clsx from 'clsx';
 import {
   address,
   credits,
+  preferenceNames,
   routeStops,
   worldById,
   worlds,
 } from './presentation';
 import { PassageChart } from './PassageChart';
 import { WorldInspection, type Inspection } from './WorldInspection';
-import { createRouter } from '../../engine';
+import { createRouter, type RoutingPreference } from '../../engine';
+import { PassageComparison } from './PassageComparison';
 import { EMBER_REACH } from '../../data/emberReach';
 import { Masthead } from './Masthead';
 import styles from './PassageThree.module.css';
@@ -28,6 +30,8 @@ export function PassageThree() {
   );
   const router = useMemo(() => createRouter(EMBER_REACH, rules), [rules]);
 
+  const [preference, setPreference] =
+    useState<RoutingPreference>('lowest-fuel-cost');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [inspection, setInspection] = useState<Inspection | null>(null);
@@ -47,11 +51,25 @@ export function PassageThree() {
     return () => query.removeEventListener('change', update);
   }, []);
 
-  const result = useMemo(
+  const alternatives = useMemo(
     () =>
-      origin && destination ? router.findRoute(origin, destination) : null,
+      origin && destination
+        ? {
+            'lowest-fuel-cost': router.findRoute(
+              origin,
+              destination,
+              'lowest-fuel-cost',
+            ),
+            'fewest-jumps': router.findRoute(
+              origin,
+              destination,
+              'fewest-jumps',
+            ),
+          }
+        : null,
     [origin, destination, router],
   );
+  const result = alternatives?.[preference] ?? null;
   const passage = result?.status === 'reachable' ? result : null;
   const stops = useMemo(
     () => (result ? routeStops(result, ship, state) : []),
@@ -68,6 +86,12 @@ export function PassageThree() {
     : !destination
       ? `Departing ${worldById(origin).name}. Choose a destination.`
       : 'Destination unreachable with this ship and available fuel sources.';
+
+  function selectPreference(next: RoutingPreference) {
+    setPreference(next);
+    setInspection(null);
+    setHighlight(null);
+  }
 
   function applyVessel(next: Vessel) {
     setVessel(next);
@@ -106,6 +130,7 @@ export function PassageThree() {
     setOrigin('aster');
     setDestination(target);
     setInspection(null);
+    setHighlight(null);
     requestAnimationFrame(() =>
       destinationRef.current?.focus({ preventScroll: true }),
     );
@@ -220,19 +245,23 @@ export function PassageThree() {
                   {credits(cost)} <span>purchased fuel</span>
                 </span>
                 <span className={styles.sr}>
-                  {worldById(origin).name} to {worldById(destination).name}.
-                  Calculated passage.
+                  {worldById(origin).name} to {worldById(destination).name}.{' '}
+                  {preferenceNames[preference]}. Calculated passage.
                 </span>
               </>
             ) : (
               status
             )}
           </p>
-          {passage && (
-            <span className={styles.optimizationLabel}>
-              Lowest purchased fuel cost
-            </span>
-          )}
+          {alternatives?.['lowest-fuel-cost'].status === 'reachable' &&
+            alternatives['fewest-jumps'].status === 'reachable' && (
+              <PassageComparison
+                economical={alternatives['lowest-fuel-cost']}
+                fewerJumps={alternatives['fewest-jumps']}
+                preference={preference}
+                onSelect={selectPreference}
+              />
+            )}
           {!origin && !destination && (
             <button
               className={styles.sampleLink}
