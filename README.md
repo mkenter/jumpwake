@@ -8,7 +8,7 @@ tabletop RPGs. A focused play aid for plotting journeys across a hex subsector.
 The v0.1 working demo runs at `/`, using the Art Deco letterhead, pale chart and passage
 manifest. Choose any two worlds in the fictional Ember Reach subsector to
 calculate a route with jump-fuel accounting, fuel purchasing and scooping, and
-deterministic cost optimization. Inspect worlds independently of endpoint
+deterministic route preferences. Inspect worlds independently of endpoint
 selection; on phones, switch between Chart and Manifest with shared journey state.
 
 The routing engine completed its independent correctness review at `defd9df`
@@ -17,9 +17,16 @@ chronological jump and refueling events, including return visits. Same-world
 journeys need no travel; unreachable destinations have an explicit result.
 No rulebook text is included.
 
-Try Aster Quay → Cinder Rest for free scooping, Aster Quay → Orison for paid
-fuel and a return visit to Serein, and Aster Quay → Last Ember for an unreachable
-destination. Ember Reach in `src/data/emberReach.ts` is the authoritative map;
+Compare **Lowest fuel cost** (the initial preference) with **Fewest jumps**
+beside the passage summary. Each quotation shows jumps and purchased fuel credits;
+selecting it updates the summary, chart and manifest together. Identical complete
+itineraries share one concise outcome; unreachable journeys offer no alternatives.
+Both preferences use the same active vessel, starting fuel and CT81 rules.
+
+Try Aster Quay → Cinder Rest for the default ship's Cr0, three-jump scooping
+passage versus a Cr6,000, two-jump passage via Brass Ledger. Try Aster Quay → Orison
+for paid fuel and a return visit to Serein, and Aster Quay → Last Ember for an
+unreachable destination. Ember Reach in `src/data/emberReach.ts` is the authoritative map;
 it also holds world descriptions. Display formatting lives with the planner.
 
 Vessel Particulars sits below the departure and destination controls. Its compact
@@ -48,8 +55,17 @@ const rules = createClassicTraveller1981Rules(
   { initialFuelTons: 13 },
 );
 const router = createRouter(EMBER_REACH, rules);
-const route = router.findRoute('aster', 'cinder');
+const route = router.findRoute('aster', 'cinder'); // defaults to 'lowest-fuel-cost'
+const fewerJumps = router.findRoute('aster', 'cinder', 'fewest-jumps');
 ```
+
+The optional third argument is a `RoutingPreference`: `'lowest-fuel-cost'`
+orders purchased credits, jumps, then total parsecs; `'fewest-jumps'` orders jumps,
+purchased credits, then total parsecs. Both finally compare the sequence of
+`(next system ID, departure fuel)` pairs in ascending order. Changing preference
+needs no new rules or router. Results always report actual totals and events.
+Fewest jumps is not a total travel-time estimate: transit, refueling, preparation,
+delays and maintenance are not modeled.
 
 Specifications and starting state are validated and snapshotted. Create new rules
 and a router when either changes. Displacement supports 100–5000 tons in 10-ton

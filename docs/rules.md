@@ -101,17 +101,25 @@ and no simulated grade inventory; it does not generalize to arbitrary fuel rules
 
 ### Search and bounds
 
-`findRoute(originId, destinationId)` uses lexicographic Dijkstra on (system,
-remaining fuel). Each edge optionally refuels and makes one jump, enumerating all
+`findRoute(originId, destinationId, preference?)` accepts the engine's
+`RoutingPreference`: `'lowest-fuel-cost'` (default) or `'fewest-jumps'`. Changing
+preference requires neither new rules nor a new router. Both search exactly the
+same eligible routes and fuel states under the supplied rules and ship.
+It uses lexicographic Dijkstra on (system, remaining fuel). Each edge optionally
+refuels and makes one jump, enumerating all
 feasible retained departure quantities. Only the cheapest eligible source is
 needed under the grade policy. Pairing purchases with jumps removes zero-cost
 refueling cycles; a physical system may still be revisited with different fuel.
 
-Labels minimize purchased credits, jumps, then total parsecs. Final ties compare
-the sequence of `(next system ID, departure fuel)` pairs, ascending ID then fuel.
+Lowest-fuel-cost labels minimize purchased credits, jumps, then total parsecs;
+fewest-jumps labels minimize jumps, purchased credits, then total parsecs.
+Final ties compare the sequence of `(next system ID, departure fuel)` pairs,
+ascending ID then fuel.
 Equal-state labels have identical future options; primary-score ties have equally
 long keys, so appending the same continuation preserves their order. Each edge
-strictly increases the primary score through its jump count, even with free fuel.
+adds nonnegative credits and distance plus exactly one jump. Therefore the
+objective tuple strictly increases under either ordering, even with free fuel,
+and Dijkstra's settlement rule remains valid.
 The first settled destination is optimal. Exhaustion returns `unreachable`.
 Initial fuel is a sunk cost and arrival requires no reserve. A same-world journey
 has no events or cost and retains its starting fuel.
@@ -144,11 +152,17 @@ Tests compare one-column and multidimensional networks against a separate
 one-ton Bellman–Ford solver. It uses individual one-ton refueling edges, its own
 CT arithmetic and eligibility, display-grid breadth-first geometry, and string
 path keys; it does not call the production rules, heap or fuel-state compression.
-The original 3,888 default facility/endpoint comparisons remain. Another 23,328
-comparisons span nine ship/state/equipment configurations, two geometries, all
-81 dry/paid/free assignments, and all endpoint pairs. These compare cost, jumps,
+Both independent objective orders run across the fixture matrix: 7,776
+comparisons cover the original default facility/endpoint cases, and 46,656 span
+nine ship/state/equipment configurations, two geometries, all 81 dry/paid/free
+assignments, and all endpoint pairs. These compare cost, jumps,
 distance **and full deterministic departure keys**, with independently replayed
-ledgers and reversed input order. All 6,400 address distances are cross-checked
+ledgers and reversed input order. Another 450 comparisons check both orders for
+all 225 Ember Reach pairs with interleaved preference queries. A frozen SHA-256
+fingerprint of complete default results from `main` at `590c6c6` guards every event
+and fuel balance across those 225 pairs. The Aster Quay–Cinder Rest case explicitly
+checks Cr0/three jumps/seven parsecs against Cr6,000/two jumps/six parsecs via
+Brass Ledger. All 6,400 address distances are cross-checked
 separately. Explicit cases cover first-jump shortfalls, paid/free partial refueling,
 different drives/displacements/capacities, dry carry-through, residual fuel,
 scooping detours with return visits, invalid inputs, same-world and unreachable
@@ -157,7 +171,10 @@ journeys. Default presentation and browser regression tests retain the manifest.
 Limitations remain one subsector, authored-system stops, deterministic facilities,
 and excluded time/risk/operating costs above. Fuel grades are descriptive rather
 than separate inventories. This is a routing prototype, not a ship operations
-simulation. No errata verification is claimed.
+simulation. Fewest jumps does not predict total travel time: roughly one week
+per CT jump excludes in-system transit, refueling, navigation preparation, delays
+and maintenance. No duration or unrefined-fuel risk penalty is calculated.
+No errata verification is claimed.
 
 ## Content and licensing
 

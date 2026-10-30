@@ -31,6 +31,9 @@ function fuelLevels(
   return [...levels].sort((a, b) => a - b);
 }
 
+/** Lexicographic cost/jumps/distance or jumps/cost/distance, then itinerary key. */
+export type RoutingPreference = 'lowest-fuel-cost' | 'fewest-jumps';
+
 export interface FuelTransaction extends FuelSource {
   readonly kind: 'refuel';
   readonly systemId: string;
@@ -73,9 +76,14 @@ interface Label {
   parent?: Label;
   events: RouteEvent[];
 }
-function compare(a: Label, b: Label): number {
-  const primary =
-    a.cost - b.cost || a.jumps - b.jumps || a.distance - b.distance;
+function compare(a: Label, b: Label, preference: RoutingPreference): number {
+  // Both orders are lexicographic sums of nonnegative edge costs. Every
+  // combined edge adds one jump, making its score strictly positive in either order.
+  const objectives =
+    preference === 'fewest-jumps'
+      ? a.jumps - b.jumps || a.cost - b.cost
+      : a.cost - b.cost || a.jumps - b.jumps;
+  const primary = objectives || a.distance - b.distance;
   if (primary) return primary;
   for (let i = 0; i < a.key.length; i++) {
     const delta = a.key[i]! - b.key[i]!;
@@ -88,9 +96,12 @@ function compare(a: Label, b: Label): number {
 class Frontier {
   private readonly heap: number[] = [];
   private readonly positions = new Map<number, number>();
-  constructor(private readonly labels: (Label | undefined)[]) {}
+  constructor(
+    private readonly labels: (Label | undefined)[],
+    private readonly preference: RoutingPreference,
+  ) {}
   private less(a: number, b: number) {
-    return compare(this.labels[a]!, this.labels[b]!) < 0;
+    return compare(this.labels[a]!, this.labels[b]!, this.preference) < 0;
   }
   private swap(a: number, b: number) {
     [this.heap[a], this.heap[b]] = [this.heap[b]!, this.heap[a]!];
@@ -208,7 +219,13 @@ export function createRouter<S extends RouteSystem>(
   });
 
   return {
-    findRoute(originId: string, destinationId: string): RouteResult {
+    findRoute(
+      originId: string,
+      destinationId: string,
+      preference: RoutingPreference = 'lowest-fuel-cost',
+    ): RouteResult {
+      if (preference !== 'lowest-fuel-cost' && preference !== 'fewest-jumps')
+        throw new Error('Unknown routing preference');
       const origin = ids.get(originId);
       const destination = ids.get(destinationId);
       if (origin === undefined || destination === undefined)
@@ -217,7 +234,7 @@ export function createRouter<S extends RouteSystem>(
         length: systems.length * width,
       });
       const settled = new Set<number>();
-      const frontier = new Frontier(labels);
+      const frontier = new Frontier(labels, preference);
       const start = origin * width + levelIndices.get(initial)!;
       labels[start] = { cost: 0, jumps: 0, distance: 0, key: [], events: [] };
       frontier.update(start);
@@ -266,7 +283,10 @@ export function createRouter<S extends RouteSystem>(
               parent: label,
               events: [],
             };
-            if (labels[next] && compare(candidate, labels[next]!) >= 0)
+            if (
+              labels[next] &&
+              compare(candidate, labels[next]!, preference) >= 0
+            )
               continue;
             if (tons && source)
               candidate.events.push({

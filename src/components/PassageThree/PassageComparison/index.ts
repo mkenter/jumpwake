@@ -1,0 +1,1 @@
+export { PassageComparison } from './PassageComparison';
