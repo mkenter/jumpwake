@@ -135,3 +135,42 @@ selected, so no open-source license grant is made by this scaffold.
 `UNLICENSED` records that pending decision; `private: true` prevents accidental
 npm publication. Rules-reference and attribution questions are tracked in the
 rules document and must be resolved before distributing rules-derived content.
+
+## Local navigation charts
+
+Open **Chart bureau** to load a UTF-8 **Traveller Map T5 Tab Delimited** file.
+Obtain compatible data using Traveller Map's documented
+[`/data/{sector}/{subsector}/tab` or `/data/{sector}/tab` endpoints](https://travellermap.com/doc/api),
+or author a tab-separated file following the [format specification](https://travellermap.com/doc/fileformats).
+Jumpwake itself makes no requests to Traveller Map and uploads no file contents.
+Imported charts last for this session; refresh requires importing again. Applied
+vessel persistence is unchanged. Return to Ember Reach from the bureau at any time.
+
+Required case-sensitive headers are `Hex`, `Name`, `UWP`, and `PBG`, in any order.
+Additional fields and source comments are retained for inspection. Blank lines and
+lines beginning with `#` are ignored. LF, CRLF and a UTF-8 BOM are supported.
+Names remain complete and need not be unique; coordinates must be unique.
+UWP must provide a known A–E/X starport and valid eHex profile; PBG must provide
+a population digit and known eHex belt and gas-giant counts. Unknown fuel data is
+rejected rather than interpreted as no fuel. All validation errors prevent loading;
+the previous chart remains active. Limits: 2 MiB, 10,000 lines, 1,280 world records.
+
+`Hex` is the original sector address, columns 01–32 and rows 01–40. Subsector
+letters run A–D across the first ten rows, E–H across the next ten, through M–P.
+Only represented subsectors appear in the selector, including sparse charts.
+Each is normalized to local columns 01–08 and rows 01–10; inspection shows both
+addresses. Routing stays inside the selected chart. Switching charts clears the
+passage and inspection, preserving the vessel and routing preference.
+
+The UWP starport and PBG gas-giant count supply facilities to the existing CT 1981
+rules, including ship-dependent scooping and existing fuel prices. T5 is a data
+interchange format here, not a rules-edition change. Remarks, zones and other
+metadata do not introduce additional operational restrictions or fuel sources.
+Imported worlds receive no invented descriptions. Source comments are available
+in the bureau; supplied columns are available in world inspection.
+
+Above 15 worlds, labels appear for endpoints and the focused, hovered or inspected
+world; every marker retains its full accessible name and tooltip. Inspect a marker
+or use the address-qualified endpoint selectors to find a world.
+Legacy fixed-width SEC and T5 column-delimited files, cross-subsector routing,
+metadata XML, and durable imported-map storage remain unsupported.

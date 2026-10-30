@@ -7,20 +7,23 @@ import {
   credits,
   preferenceNames,
   routeStops,
-  worldById,
-  worlds,
+  presentWorlds,
 } from './presentation';
 import { PassageChart } from './PassageChart';
 import { WorldInspection, type Inspection } from './WorldInspection';
 import { createRouter, type RoutingPreference } from '../../engine';
 import { PassageComparison } from './PassageComparison';
-import { EMBER_REACH } from '../../data/emberReach';
+import { demoChart, type Subsector } from '../../import/subsector';
+import { ChartArchive } from './ChartArchive';
 import { Masthead } from './Masthead';
 import styles from './PassageThree.module.css';
 import { VesselParticulars } from './VesselParticulars';
 import { restoreVessel, saveVessel, type Vessel } from './vessel';
 
 export function PassageThree() {
+  const [chart, setChart] = useState(demoChart);
+  const worlds = useMemo(() => presentWorlds(chart.worlds), [chart]);
+  const worldById = (id: string) => worlds.find((world) => world.id === id)!;
   const [vessel, setVessel] = useState(restoreVessel);
   const [saveUnavailable, setSaveUnavailable] = useState(false);
   const { ship, state } = vessel;
@@ -28,7 +31,10 @@ export function PassageThree() {
     () => createClassicTraveller1981Rules(ship, state),
     [ship, state],
   );
-  const router = useMemo(() => createRouter(EMBER_REACH, rules), [rules]);
+  const router = useMemo(
+    () => createRouter(chart.worlds, rules),
+    [chart, rules],
+  );
 
   const [preference, setPreference] =
     useState<RoutingPreference>('lowest-fuel-cost');
@@ -72,8 +78,16 @@ export function PassageThree() {
   const result = alternatives?.[preference] ?? null;
   const passage = result?.status === 'reachable' ? result : null;
   const stops = useMemo(
-    () => (result ? routeStops(result, ship, state) : []),
-    [result, ship, state],
+    () =>
+      result
+        ? routeStops(
+            result,
+            (id) => worlds.find((w) => w.id === id)!,
+            ship,
+            state,
+          )
+        : [],
+    [result, ship, state, worlds],
   );
   const chartStops = useMemo(
     () => stops.filter((stop) => stop.kind !== 'refuel'),
@@ -86,6 +100,14 @@ export function PassageThree() {
     : !destination
       ? `Departing ${worldById(origin).name}. Choose a destination.`
       : 'Destination unreachable with this ship and available fuel sources.';
+
+  function selectChart(next: Subsector) {
+    setOrigin('');
+    setDestination('');
+    setInspection(null);
+    setHighlight(null);
+    setChart(next);
+  }
 
   function selectPreference(next: RoutingPreference) {
     setPreference(next);
@@ -154,6 +176,7 @@ export function PassageThree() {
 
   const inspectionPanel = inspection ? (
     <WorldInspection
+      worlds={worlds}
       inspection={inspection}
       compact={compact}
       origin={origin}
@@ -173,8 +196,14 @@ export function PassageThree() {
       <a className={styles.skipLink} href="#main-content">
         Skip to planner
       </a>
-      <Masthead compact={compact} view={view} onNavigate={navigate} />
+      <Masthead
+        title={chart.title}
+        compact={compact}
+        view={view}
+        onNavigate={navigate}
+      />
       <main id="main-content" tabIndex={-1}>
+        <ChartArchive chart={chart} onSelect={selectChart} />
         <section
           id="journey-controls"
           className={styles.journeyControls}
@@ -199,7 +228,7 @@ export function PassageThree() {
                 <option value="">Choose origin</option>
                 {worlds.map((world) => (
                   <option key={world.id} value={world.id}>
-                    {world.name}
+                    {world.name} · {address(world)}
                   </option>
                 ))}
               </select>
@@ -220,7 +249,7 @@ export function PassageThree() {
                 <option value="">Choose world</option>
                 {worlds.map((world) => (
                   <option key={world.id} value={world.id}>
-                    {world.name}
+                    {world.name} · {address(world)}
                   </option>
                 ))}
               </select>
@@ -262,7 +291,7 @@ export function PassageThree() {
                 onSelect={selectPreference}
               />
             )}
-          {!origin && !destination && (
+          {chart === demoChart && !origin && !destination && (
             <button
               className={styles.sampleLink}
               onClick={() => sample('cinder')}
@@ -290,11 +319,13 @@ export function PassageThree() {
                   <path d="M12 1L15 9L23 12L15 15L12 23L9 15L1 12L9 9Z" />
                   <circle cx="12" cy="12" r="2" />
                 </svg>
-                Ember Reach <span>field chart</span>
+                {chart.title} <span>field chart</span>
               </h2>
               <span>8 × 10 hexes · 1 pc per hex</span>
             </div>
             <PassageChart
+              worlds={worlds}
+              title={chart.title}
               stops={chartStops}
               visible={!compact || view === 'chart'}
               selected={inspection?.id ?? null}
@@ -412,15 +443,18 @@ export function PassageThree() {
                       ? 'No passage is possible with these vessel particulars and local fuel sources. Review jump range, fuel aboard and scooping equipment, or choose another destination.'
                       : 'Choose your worlds above, or inspect one on the chart and set it as an endpoint.'}
                   </p>
-                  <div className={styles.examples}>
-                    <span>Plan a journey</span>
-                    <button onClick={() => sample('cinder')}>
-                      Aster Quay → Cinder Rest <span aria-hidden="true">↗</span>
-                    </button>
-                    <button onClick={() => sample('orison')}>
-                      Aster Quay → Orison <span aria-hidden="true">↗</span>
-                    </button>
-                  </div>
+                  {chart === demoChart && (
+                    <div className={styles.examples}>
+                      <span>Plan a journey</span>
+                      <button onClick={() => sample('cinder')}>
+                        Aster Quay → Cinder Rest{' '}
+                        <span aria-hidden="true">↗</span>
+                      </button>
+                      <button onClick={() => sample('orison')}>
+                        Aster Quay → Orison <span aria-hidden="true">↗</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
               {passage && (

@@ -2,8 +2,13 @@ import { classicTraveller1981 } from '../../../rules/classicTraveller1981';
 import { describe, expect, it } from 'vitest';
 import { createRouter } from '../../../engine';
 import { EMBER_REACH } from '../../../data/emberReach';
-import { point, routeStops, worldById, type Stop } from '../presentation';
-import { routeLegs } from './routeGeometry';
+import {
+  point,
+  routeStops as formatStops,
+  presentWorlds,
+  type Stop,
+} from '../presentation';
+import { routeLegs as makeLegs } from './routeGeometry';
 
 function visits(ids: string[]): Stop[] {
   return ids.map((world, index) => ({
@@ -179,3 +184,10 @@ describe('route chart lanes', () => {
     expect(routeLegs(visits(['aster', 'aster']))).toEqual([]);
   });
 });
+
+const worlds = presentWorlds(EMBER_REACH);
+const worldById = (id: string) => worlds.find((w) => w.id === id)!;
+const routeStops = (result: Parameters<typeof formatStops>[0]) =>
+  formatStops(result, worldById);
+const routeLegs = (stops: Parameters<typeof makeLegs>[0], radius = 7) =>
+  makeLegs(stops, worldById, radius);

@@ -1,4 +1,4 @@
-import { point, worldById, type Stop } from '../presentation';
+import { point, type PresentedWorld, type Stop } from '../presentation';
 
 export type ChartPoint = { x: number; y: number };
 export type RouteLeg = {
@@ -82,6 +82,7 @@ export function curvePoint(
 
 export function routeLegs(
   stops: readonly Stop[],
+  worldById: (id: string) => PresentedWorld,
   markerRadius = 7,
 ): RouteLeg[] {
   const visits = stops.filter((stop) => stop.kind !== 'refuel');

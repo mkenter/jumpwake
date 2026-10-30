@@ -2,11 +2,12 @@ import { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import type { TravelRules } from '../../../rules/types';
 import type { StarSystem } from '../../../rules/classicTraveller1981';
-import { address, describeFuel, worldById } from '../presentation';
+import { address, describeFuel, type PresentedWorld } from '../presentation';
 import styles from './WorldInspection.module.css';
 
 export type Inspection = { id: string; trigger: HTMLElement | SVGElement };
 type Props = {
+  worlds: readonly PresentedWorld[];
   inspection: Inspection;
   compact: boolean;
   origin: string;
@@ -19,6 +20,7 @@ type Props = {
 };
 
 export function WorldInspection({
+  worlds,
   inspection,
   compact,
   origin,
@@ -32,7 +34,7 @@ export function WorldInspection({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const reduced = useReducedMotion();
-  const world = worldById(inspection.id);
+  const world = worlds.find((w) => w.id === inspection.id)!;
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -77,7 +79,24 @@ export function WorldInspection({
                 : 'World details'}{' '}
         · inspecting only
       </p>
-      <p className={styles.note}>{world.note}</p>
+      {world.note && <p className={styles.note}>{world.note}</p>}
+      {world.sourceHex && (
+        <p>
+          Local {address(world)} · Sector {world.sourceHex}
+        </p>
+      )}
+      {world.metadata && (
+        <dl>
+          {Object.entries(world.metadata)
+            .filter(([, value]) => value)
+            .map(([key, value]) => (
+              <div key={key}>
+                <dt>{key}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+        </dl>
+      )}
       <p className={styles.fuel}>
         <span>Local fuel</span>
         {describeFuel(rules.fuelSources(world))}

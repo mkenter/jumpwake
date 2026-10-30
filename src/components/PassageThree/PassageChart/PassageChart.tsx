@@ -1,12 +1,20 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { motion, useReducedMotion } from 'motion/react';
-import { address, hexes, point, worlds, type Stop } from '../presentation';
+import {
+  address,
+  hexes,
+  point,
+  type PresentedWorld,
+  type Stop,
+} from '../presentation';
 import { routeLegs } from './routeGeometry';
 import { placeWorldLabels, type LabelMetrics } from './labelLayout';
 import styles from './PassageChart.module.css';
 
 type Props = {
+  worlds: readonly PresentedWorld[];
+  title: string;
   stops: Stop[];
   visible: boolean;
   selected: string | null;
@@ -18,6 +26,8 @@ type Props = {
 };
 
 export function PassageChart({
+  worlds,
+  title,
   stops,
   visible,
   selected,
@@ -39,8 +49,9 @@ export function PassageChart({
   }, []);
   const markerRadius = largeMarkers ? 11 : 7;
   const legs = useMemo(
-    () => routeLegs(stops, markerRadius),
-    [stops, markerRadius],
+    () =>
+      routeLegs(stops, (id) => worlds.find((w) => w.id === id)!, markerRadius),
+    [stops, markerRadius, worlds],
   );
   const svgRef = useRef<SVGSVGElement>(null);
   const [metrics, setMetrics] = useState<Record<string, LabelMetrics>>({});
@@ -62,7 +73,7 @@ export function PassageChart({
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Measure SVG glyphs before paint so label placement does not visibly jump.
     setMetrics(measured);
-  }, [largeMarkers, origin, destination, visible]);
+  }, [largeMarkers, origin, destination, visible, worlds]);
   const labels = useMemo(
     () =>
       placeWorldLabels(
@@ -81,7 +92,7 @@ export function PassageChart({
         legs,
         markerRadius,
       ),
-    [metrics, legs, markerRadius, largeMarkers],
+    [metrics, legs, markerRadius, largeMarkers, worlds],
   );
   return (
     <svg
@@ -89,7 +100,7 @@ export function PassageChart({
       className={styles.chart}
       viewBox="-22 -18 650 800"
       role="group"
-      aria-label="Ember Reach subsector. Select a world to inspect; use its details to change endpoints."
+      aria-label={`${title} subsector. Select a world to inspect; use its details to change endpoints.`}
     >
       <g className={styles.grid} aria-hidden="true">
         {hexes.map((hex) => (
@@ -181,10 +192,10 @@ export function PassageChart({
             </title>
             <rect
               className={styles.hit}
-              x={p.x - 42}
-              y={p.y - 42}
-              width="84"
-              height="84"
+              x={p.x - (worlds.length > 15 ? 24 : 42)}
+              y={p.y - (worlds.length > 15 ? 24 : 42)}
+              width={worlds.length > 15 ? 48 : 84}
+              height={worlds.length > 15 ? 48 : 84}
               rx="22"
             />
             <circle className={styles.halo} cx={p.x} cy={p.y} r="22" />
@@ -195,11 +206,21 @@ export function PassageChart({
               r={index >= 0 ? markerRadius : 3.5}
             />
             <g
+              visibility={
+                worlds.length > 15 &&
+                selected !== world.id &&
+                highlight !== world.id &&
+                !endpoint
+                  ? 'hidden'
+                  : undefined
+              }
               data-world-label={world.id}
               transform={`translate(${label.x} ${label.y})`}
             >
               <text data-label-name className={styles.name} x="0" y="0">
-                {world.name.split(' ')[0]}
+                {world.sourceHex && world.name.split(' ')[0]!.length > 12
+                  ? `${world.name.split(' ')[0]!.slice(0, 11)}…`
+                  : world.name.split(' ')[0]}
               </text>
               <text
                 data-label-code

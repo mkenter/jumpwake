@@ -1,4 +1,4 @@
-import { EMBER_REACH } from '../../data/emberReach';
+import type { ChartWorld } from '../../import/subsector';
 import type { RouteResult, RoutingPreference } from '../../engine';
 import type { FuelSource } from '../../rules/types';
 import {
@@ -26,15 +26,15 @@ export function describeFuel(sources: readonly FuelSource[]) {
   );
 }
 
-export const worlds = EMBER_REACH.map((system) => ({
-  ...system,
-  col: system.hex.column,
-  row: system.hex.row,
-  port: system.starport,
-  fuel: describeFuel(fuelSources(system)),
-}));
-export const worldById = (id: string) =>
-  worlds.find((world) => world.id === id)!;
+export const presentWorlds = (systems: readonly ChartWorld[]) =>
+  systems.map((system) => ({
+    ...system,
+    col: system.hex.column,
+    row: system.hex.row,
+    port: system.starport,
+    fuel: describeFuel(fuelSources(system)),
+  }));
+export type PresentedWorld = ReturnType<typeof presentWorlds>[number];
 export const address = (world: { col: number; row: number }) =>
   `${String(world.col).padStart(2, '0')}${String(world.row).padStart(2, '0')}`;
 export type Stop = {
@@ -48,6 +48,7 @@ export type Stop = {
 };
 export function routeStops(
   result: RouteResult,
+  worldById: (id: string) => ChartWorld,
   ship: ShipSpecifications = SHIP,
   state: ShipOperatingState = INITIAL_STATE,
 ): Stop[] {
