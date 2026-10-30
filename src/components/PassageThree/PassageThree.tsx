@@ -1,8 +1,4 @@
-import {
-  classicTraveller1981,
-  SHIP,
-  INITIAL_STATE,
-} from '../../rules/classicTraveller1981';
+import { createClassicTraveller1981Rules } from '../../rules/classicTraveller1981';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import clsx from 'clsx';
@@ -19,10 +15,19 @@ import { createRouter } from '../../engine';
 import { EMBER_REACH } from '../../data/emberReach';
 import { Masthead } from './Masthead';
 import styles from './PassageThree.module.css';
-
-const router = createRouter(EMBER_REACH, classicTraveller1981);
+import { VesselParticulars } from './VesselParticulars';
+import { restoreVessel, saveVessel, type Vessel } from './vessel';
 
 export function PassageThree() {
+  const [vessel, setVessel] = useState(restoreVessel);
+  const [saveUnavailable, setSaveUnavailable] = useState(false);
+  const { ship, state } = vessel;
+  const rules = useMemo(
+    () => createClassicTraveller1981Rules(ship, state),
+    [ship, state],
+  );
+  const router = useMemo(() => createRouter(EMBER_REACH, rules), [rules]);
+
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [inspection, setInspection] = useState<Inspection | null>(null);
@@ -45,10 +50,13 @@ export function PassageThree() {
   const result = useMemo(
     () =>
       origin && destination ? router.findRoute(origin, destination) : null,
-    [origin, destination],
+    [origin, destination, router],
   );
   const passage = result?.status === 'reachable' ? result : null;
-  const stops = useMemo(() => (result ? routeStops(result) : []), [result]);
+  const stops = useMemo(
+    () => (result ? routeStops(result, ship, state) : []),
+    [result, ship, state],
+  );
   const chartStops = useMemo(
     () => stops.filter((stop) => stop.kind !== 'refuel'),
     [stops],
@@ -60,6 +68,13 @@ export function PassageThree() {
     : !destination
       ? `Departing ${worldById(origin).name}. Choose a destination.`
       : 'Destination unreachable with this ship and available fuel sources.';
+
+  function applyVessel(next: Vessel) {
+    setVessel(next);
+    setInspection(null);
+    setHighlight(null);
+    setSaveUnavailable(!saveVessel(next));
+  }
 
   function inspect(id: string, trigger: HTMLElement | SVGElement) {
     setHighlight(null);
@@ -122,6 +137,7 @@ export function PassageThree() {
         stop.world === inspection.id ? [index + 1] : [],
       )}
       hasPassage={Boolean(passage)}
+      rules={rules}
       onClose={closeInspection}
       onUseWorld={useWorld}
     />
@@ -141,10 +157,6 @@ export function PassageThree() {
         >
           <div className={styles.controlHeading}>
             <span>Plot your passage</span>
-            <span>
-              Jump–{SHIP.jumpRating} · {SHIP.displacementTons} t
-              {SHIP.hasFuelScoops ? ' · fuel scoops' : ''}
-            </span>
           </div>
           <div className={styles.endpoints}>
             <label>
@@ -189,13 +201,20 @@ export function PassageThree() {
               </select>
             </label>
           </div>
+          <VesselParticulars
+            vessel={vessel}
+            onApply={applyVessel}
+            saveUnavailable={saveUnavailable}
+          />
         </section>
         <div className={styles.journeySummary}>
           <p role="status" aria-atomic="true">
             {passage ? (
               <>
                 <strong>
-                  {passage.jumpCount} jumps <span>·</span> {distance} pc
+                  {passage.jumpCount}{' '}
+                  {passage.jumpCount === 1 ? 'jump' : 'jumps'} <span>·</span>{' '}
+                  {distance} pc
                 </strong>
                 <span className={styles.summaryCost}>
                   {credits(cost)} <span>purchased fuel</span>
@@ -275,8 +294,8 @@ export function PassageThree() {
               <div className={styles.sectionHead}>
                 <h2>Passage manifest</h2>
                 <span>
-                  Jump–{SHIP.jumpRating} · {SHIP.displacementTons} t
-                  {SHIP.hasFuelScoops ? ' · scoops' : ''}
+                  Jump–{ship.jumpRating} · {ship.displacementTons} t
+                  {ship.hasFuelScoops ? ' · scoops' : ''}
                 </span>
               </div>
               {!compact && inspectionPanel}
@@ -361,7 +380,7 @@ export function PassageThree() {
                   </h3>
                   <p>
                     {origin && destination
-                      ? 'No route satisfies the jump range and fuel constraints. Choose another destination.'
+                      ? 'No passage is possible with these vessel particulars and local fuel sources. Review jump range, fuel aboard and scooping equipment, or choose another destination.'
                       : 'Choose your worlds above, or inspect one on the chart and set it as an endpoint.'}
                   </p>
                   <div className={styles.examples}>
@@ -378,7 +397,8 @@ export function PassageThree() {
               {passage && (
                 <p className={styles.manifestNote}>
                   Jump fuel before → after each event. Arrival:{' '}
-                  {passage.fuelRemainingTons} t. Initial 60 t is a sunk cost.
+                  {passage.fuelRemainingTons} t. Initial {state.initialFuelTons}{' '}
+                  t is a sunk cost.
                 </p>
               )}
             </section>
@@ -388,8 +408,8 @@ export function PassageThree() {
       </main>
       <footer className={styles.footer}>
         <span>
-          JUMP–{SHIP.jumpRating} · {SHIP.displacementTons} T ·{' '}
-          {INITIAL_STATE.initialFuelTons} T INITIAL JUMP FUEL
+          JUMP–{ship.jumpRating} · {ship.displacementTons} T ·{' '}
+          {state.initialFuelTons} T INITIAL JUMP FUEL
         </span>
         <span>Fuel grades simplified · no arrival reserve</span>
       </footer>

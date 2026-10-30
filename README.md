@@ -22,9 +22,15 @@ fuel and a return visit to Serein, and Aster Quay → Last Ember for an unreacha
 destination. Ember Reach in `src/data/emberReach.ts` is the authoritative map;
 it also holds world descriptions. Display formatting lives with the planner.
 
+Vessel Particulars sits below the departure and destination controls. Its compact
+summary shows the active ship; Edit particulars opens an inline form for vessel
+specifications and current jump fuel. Apply validates and recalculates the selected
+passage. Cancel, Close, and Escape discard edits; Restore demonstration ship fills
+the draft and takes effect on Apply. Applied particulars are saved locally in this
+browser. Invalid or obsolete saved values fall back to the 200-ton Jump-3 demo.
+
 The engine exports `createRouter` and coordinate conversions through
-`src/engine/index.ts`. The application still uses the original 200-ton Jump-3
-vessel, but the programmatic API accepts configurable CT81 ships:
+`src/engine/index.ts`. The same configurable CT81 API powers the form:
 
 ```ts
 import { createRouter } from './src/engine';
@@ -51,7 +57,7 @@ increments, Jump-1–6, whole-ton jump-fuel capacity from 1 to displacement, and
 starting jump fuel from zero to capacity. Invalid or fractional inputs throw;
 no values are rounded. These are routing inputs, not complete CT ship-design
 validation. Jump fuel excludes power-plant fuel. Gas-giant access requires both
-scoops and streamlining. The vessel-particulars form is deferred.
+scoops and streamlining.
 See [the rules document](docs/rules.md#routing-implementation) for exact fuel
 states, optimization, performance bounds, and operational limitations.
 

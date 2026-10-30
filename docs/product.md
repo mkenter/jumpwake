@@ -9,8 +9,8 @@ at the table.
 - Classic Traveller 1981 Books 2 and 3 as the primary rules target; see [rules.md](rules.md) for verification status.
 - One 8 × 10 subsector containing authored, fictional star systems.
 - A default 200-ton Jump-3 ship with scoops, streamlining, and 60 tons allocated
-  to jump fuel, initially full. A validated programmatic API supports other ship
-  particulars and partial starting fuel; vessel controls are deferred.
+  to jump fuel, initially full. Vessel Particulars supports validated ship
+  specifications and partial starting fuel through the same programmatic API.
 - Routes minimizing total **purchased fuel cost**, breaking ties by fewest jumps,
   then shortest total distance, with deterministic results.
 - Routes account for available fuel, refueling opportunities, and jump constraints.
@@ -28,6 +28,19 @@ sources. On narrow screens, chart and manifest share endpoint state, and
 inspection opens in a dismissible sheet. Chart/manifest switching applies below
 900px; wider windows show both panels with a 280–340px manifest rail. Keyboard
 activation, Escape/Close, focus restoration and linked world/event highlighting are supported.
+
+Vessel Particulars unfolds inline below the endpoint selectors, with a compact
+active-ship summary at rest. Durable specifications and fuel currently aboard have
+separate ruled groups. Draft edits leave the passage unchanged until Apply passes
+the CT rules validation. Cancel, Close, and Escape discard the draft and restore
+focus to Edit; demonstration defaults also require Apply. Applied particulars
+recreate the rules and router, preserve endpoints and the current planner view,
+and clear obsolete inspection/highlighting. The manifest, chart, costs and local
+fuel availability reflect the active vessel. A versioned `jumpwake.vessel` entry
+in localStorage saves one applied vessel, validates restoration, and falls back
+to demonstration defaults for obsolete or malformed data. If storage is unavailable,
+planning still works for the visit. This is route configuration, not complete ship
+construction; capacity covers jump fuel only.
 
 The restored Design 3 composition uses an open paper chart, slate typography,
 subtle plum routes and a manifest rail that reaches 340px on wider desktops. Both

@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { address, worldById } from '../presentation';
+import type { TravelRules } from '../../../rules/types';
+import type { StarSystem } from '../../../rules/classicTraveller1981';
+import { address, describeFuel, worldById } from '../presentation';
 import styles from './WorldInspection.module.css';
 
 export type Inspection = { id: string; trigger: HTMLElement | SVGElement };
@@ -11,6 +13,7 @@ type Props = {
   destination: string;
   routeIndices: number[];
   hasPassage: boolean;
+  rules: TravelRules<StarSystem>;
   onClose: () => void;
   onUseWorld: (endpoint: 'origin' | 'destination') => void;
 };
@@ -22,6 +25,7 @@ export function WorldInspection({
   destination,
   routeIndices,
   hasPassage,
+  rules,
   onClose,
   onUseWorld,
 }: Props) {
@@ -76,7 +80,7 @@ export function WorldInspection({
       <p className={styles.note}>{world.note}</p>
       <p className={styles.fuel}>
         <span>Local fuel</span>
-        {world.fuel}
+        {describeFuel(rules.fuelSources(world))}
       </p>
       <div className={styles.actions}>
         <button
