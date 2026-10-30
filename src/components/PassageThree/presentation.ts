@@ -1,24 +1,32 @@
 import { EMBER_REACH } from '../../data/emberReach';
 import type { RouteResult } from '../../engine';
+import type { FuelSource } from '../../rules/types';
 import {
   fuelSources,
   INITIAL_STATE,
   SHIP,
+  type ShipSpecifications,
+  type ShipOperatingState,
 } from '../../rules/classicTraveller1981';
+
+export function describeFuel(sources: readonly FuelSource[]) {
+  return (
+    sources
+      .map((source) =>
+        source.source === 'gas-giant'
+          ? 'Gas giant · free scooping (unrefined)'
+          : `${source.grade === 'refined' ? 'Refined' : 'Unrefined'} · Cr${source.creditsPerTon}/t`,
+      )
+      .join('; ') || 'No local fuel'
+  );
+}
 
 export const worlds = EMBER_REACH.map((system) => ({
   ...system,
   col: system.hex.column,
   row: system.hex.row,
   port: system.starport,
-  fuel:
-    fuelSources(system)
-      .map((source) =>
-        source.source === 'gas-giant'
-          ? 'Gas giant · free scooping (unrefined)'
-          : `${source.grade === 'refined' ? 'Refined' : 'Unrefined'} · Cr${source.creditsPerTon}/t`,
-      )
-      .join('; ') || 'No local fuel',
+  fuel: describeFuel(fuelSources(system)),
 }));
 export const worldById = (id: string) =>
   worlds.find((world) => world.id === id)!;
@@ -33,7 +41,11 @@ export type Stop = {
   cost: number;
   fuel: string;
 };
-export function routeStops(result: RouteResult): Stop[] {
+export function routeStops(
+  result: RouteResult,
+  ship: ShipSpecifications = SHIP,
+  state: ShipOperatingState = INITIAL_STATE,
+): Stop[] {
   if (result.status === 'unreachable') return [];
   return [
     {
@@ -42,12 +54,12 @@ export function routeStops(result: RouteResult): Stop[] {
       kind: 'departure',
       jump: 0,
       action: result.jumpCount
-        ? INITIAL_STATE.initialFuelTons === SHIP.jumpFuelCapacityTons
+        ? state.initialFuelTons === ship.jumpFuelCapacityTons
           ? 'Depart with full jump fuel'
           : 'Depart with available jump fuel'
         : 'Already at your destination. No travel needed.',
       cost: 0,
-      fuel: `${INITIAL_STATE.initialFuelTons} t aboard`,
+      fuel: `${state.initialFuelTons} t aboard`,
     },
     ...result.events.map((event, index): Stop => ({
       id: `event-${index}`,
