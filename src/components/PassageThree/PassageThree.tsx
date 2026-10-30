@@ -1,4 +1,8 @@
-import { classicTraveller1981 } from '../../rules/classicTraveller1981';
+import {
+  classicTraveller1981,
+  SHIP,
+  INITIAL_STATE,
+} from '../../rules/classicTraveller1981';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import clsx from 'clsx';
@@ -137,7 +141,10 @@ export function PassageThree() {
         >
           <div className={styles.controlHeading}>
             <span>Plot your passage</span>
-            <span>Jump–3 · 200 t · fuel scoops</span>
+            <span>
+              Jump–{SHIP.jumpRating} · {SHIP.displacementTons} t
+              {SHIP.hasFuelScoops ? ' · fuel scoops' : ''}
+            </span>
           </div>
           <div className={styles.endpoints}>
             <label>
@@ -267,7 +274,10 @@ export function PassageThree() {
             >
               <div className={styles.sectionHead}>
                 <h2>Passage manifest</h2>
-                <span>Jump–3 · 200 t · scoops</span>
+                <span>
+                  Jump–{SHIP.jumpRating} · {SHIP.displacementTons} t
+                  {SHIP.hasFuelScoops ? ' · scoops' : ''}
+                </span>
               </div>
               {!compact && inspectionPanel}
               {passage ? (
@@ -377,7 +387,10 @@ export function PassageThree() {
         </div>
       </main>
       <footer className={styles.footer}>
-        <span>JUMP–3 · 200 T · 60 T INITIAL JUMP FUEL</span>
+        <span>
+          JUMP–{SHIP.jumpRating} · {SHIP.displacementTons} T ·{' '}
+          {INITIAL_STATE.initialFuelTons} T INITIAL JUMP FUEL
+        </span>
         <span>Fuel grades simplified · no arrival reserve</span>
       </footer>
       <p className={styles.sr} aria-live="polite">

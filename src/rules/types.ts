@@ -8,8 +8,11 @@ export interface FuelSource {
   readonly grade: string;
   readonly creditsPerTon: number;
 }
-/** Only the existing four-state, full-tank model is supported. */
+/** Exact whole-ton, unlimited linear-price fuel model. See docs/rules.md. */
 export interface TravelRules<S extends RouteSystem> {
+  readonly maxJumpDistance: number;
+  readonly jumpFuelCapacityTons: number;
+  readonly initialFuelTons: number;
   validateSystem(system: S): void;
   jumpFuelTons(distance: number): number;
   fuelSources(system: S): readonly FuelSource[];

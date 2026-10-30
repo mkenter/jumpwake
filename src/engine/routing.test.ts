@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { createRouter as createEngineRouter } from './routing';
-import { classicTraveller1981 } from '../rules/classicTraveller1981';
+import {
+  classicTraveller1981,
+  createClassicTraveller1981Rules,
+  SHIP,
+  INITIAL_STATE,
+} from '../rules/classicTraveller1981';
 const createRouter = (systems: readonly StarSystem[]) =>
   createEngineRouter(systems, classicTraveller1981);
 import type { RouteResult } from './routing';
-import type { StarSystem, Starport } from '../rules/classicTraveller1981';
+import type {
+  StarSystem,
+  Starport,
+  ShipSpecifications,
+  ShipOperatingState,
+} from '../rules/classicTraveller1981';
 import { displayDistance } from './geometry.test-support';
 import { EMBER_REACH } from '../data/emberReach';
 
@@ -190,52 +200,85 @@ describe('fuel-aware routes', () => {
 });
 
 // Independent Bellman–Ford oracle on tiny display-grid networks. Uses 1-ton
-// refuel edges (not the production 20-ton combined refuel/jump transitions).
-function reference(systems: readonly StarSystem[], start: number, end: number) {
-  type Score = [number, number, number];
-  const labels: (Score | undefined)[] = Array.from({
-    length: systems.length * 61,
+// refuel edges rather than the production combined refuel/jump transitions.
+interface ReferenceLabel {
+  score: [number, number, number];
+  key: [string, number][];
+}
+function referenceDetailed(
+  systems: readonly StarSystem[],
+  start: number,
+  end: number,
+  ship: ShipSpecifications = SHIP,
+  state: ShipOperatingState = INITIAL_STATE,
+) {
+  const capacity = ship.jumpFuelCapacityTons;
+  const width = capacity + 1;
+  const labels: (ReferenceLabel | undefined)[] = Array.from({
+    length: systems.length * width,
   });
-  labels[start * 61 + 60] = [0, 0, 0];
-  const less = (a: Score, b: Score) =>
-    a[0] < b[0] ||
-    (a[0] === b[0] && (a[1] < b[1] || (a[1] === b[1] && a[2] < b[2])));
+  labels[start * width + state.initialFuelTons] = { score: [0, 0, 0], key: [] };
+  const less = (a: ReferenceLabel, b: ReferenceLabel) => {
+    for (let i = 0; i < 3; i++) {
+      if (a.score[i] !== b.score[i]) return a.score[i]! < b.score[i]!;
+    }
+    for (let i = 0; i < a.key.length; i++) {
+      const [aid, afuel] = a.key[i]!;
+      const [bid, bfuel] = b.key[i]!;
+      if (aid !== bid) return aid < bid;
+      if (afuel !== bfuel) return afuel < bfuel;
+    }
+    return false;
+  };
+  // Independent one-ton refueling edges, geometry, CT arithmetic, and string keys.
+  // No production rules, critical levels, heap, or combined transitions are used.
   for (let pass = 0; pass < labels.length; pass++) {
     let changed = false;
-    const relax = (to: number, candidate: Score) => {
+    const relax = (to: number, candidate: ReferenceLabel) => {
       if (!labels[to] || less(candidate, labels[to]!)) {
         labels[to] = candidate;
         changed = true;
       }
     };
     for (let i = 0; i < systems.length; i++)
-      for (let fuel = 0; fuel <= 60; fuel++) {
-        const score = labels[i * 61 + fuel];
-        if (!score) continue;
-        if (i === end) continue;
+      for (let fuel = 0; fuel <= capacity; fuel++) {
+        const label = labels[i * width + fuel];
+        if (!label || i === end) continue;
         const s = systems[i]!;
-        if (fuel < 60 && (s.gasGiant || 'ABCD'.includes(s.starport)))
-          relax(i * 61 + fuel + 1, [
-            score[0] + (s.gasGiant ? 0 : 100),
-            score[1],
-            score[2],
-          ]);
+        const free = s.gasGiant && ship.hasFuelScoops && ship.streamlined;
+        if (fuel < capacity && (free || 'ABCD'.includes(s.starport)))
+          relax(i * width + fuel + 1, {
+            score: [
+              label.score[0] + (free ? 0 : 100),
+              label.score[1],
+              label.score[2],
+            ],
+            key: label.key,
+          });
         for (let j = 0; j < systems.length; j++) {
           const distance = displayDistance(s.hex, systems[j]!.hex);
-          if (distance >= 1 && distance <= 3 && fuel >= distance * 20)
-            relax(j * 61 + fuel - distance * 20, [
-              score[0],
-              score[1] + 1,
-              score[2] + distance,
-            ]);
+          const needed = (ship.displacementTons / 10) * distance;
+          if (distance >= 1 && distance <= ship.jumpRating && fuel >= needed)
+            relax(j * width + fuel - needed, {
+              score: [
+                label.score[0],
+                label.score[1] + 1,
+                label.score[2] + distance,
+              ],
+              key: [...label.key, [systems[j]!.id, fuel]],
+            });
         }
       }
     if (!changed) break;
+    if (pass === labels.length - 1) throw new Error('Oracle did not converge');
   }
   return labels
-    .slice(end * 61, end * 61 + 61)
-    .filter((x): x is Score => !!x)
+    .slice(end * width, (end + 1) * width)
+    .filter((x): x is ReferenceLabel => !!x)
     .sort((a, b) => (less(a, b) ? -1 : less(b, a) ? 1 : 0))[0];
+}
+function reference(systems: readonly StarSystem[], start: number, end: number) {
+  return referenceDetailed(systems, start, end)?.score;
 }
 
 it('matches an independent ton-resolution solver for all fuel assignments and endpoint pairs', () => {
@@ -262,10 +305,15 @@ it('matches an independent ton-resolution solver for all fuel assignments and en
   }
 });
 
-function expectBalanced(systems: readonly StarSystem[], result: RouteResult) {
+function expectBalanced(
+  systems: readonly StarSystem[],
+  result: RouteResult,
+  ship: ShipSpecifications = SHIP,
+  state: ShipOperatingState = INITIAL_STATE,
+) {
   if (result.status !== 'reachable') return;
   const byId = new Map(systems.map((s) => [s.id, s]));
-  let fuel = 60;
+  let fuel = state.initialFuelTons;
   let location = result.originId;
   let cost = 0;
   let distance = 0;
@@ -278,9 +326,10 @@ function expectBalanced(systems: readonly StarSystem[], result: RouteResult) {
       expect(event.systemId).toBe(location);
       expect(event.tons).toBeGreaterThan(0);
       expect(event.grade).toBe('unrefined');
-      expect(event.source).toBe(stop.gasGiant ? 'gas-giant' : 'starport');
-      expect(stop.gasGiant || 'ABCD'.includes(stop.starport)).toBe(true);
-      expect(event.creditsPerTon).toBe(stop.gasGiant ? 0 : 100);
+      const free = stop.gasGiant && ship.hasFuelScoops && ship.streamlined;
+      expect(event.source).toBe(free ? 'gas-giant' : 'starport');
+      expect(free || 'ABCD'.includes(stop.starport)).toBe(true);
+      expect(event.creditsPerTon).toBe(free ? 0 : 100);
       expect(event.costCredits).toBe(event.tons * event.creditsPerTon);
       expect(result.events[i + 1]?.kind).toBe('jump');
       fuel += event.tons;
@@ -291,8 +340,10 @@ function expectBalanced(systems: readonly StarSystem[], result: RouteResult) {
         displayDistance(byId.get(location)!.hex, byId.get(event.toId)!.hex),
       );
       expect(event.distance).toBeGreaterThanOrEqual(1);
-      expect(event.distance).toBeLessThanOrEqual(3);
-      expect(event.fuelConsumedTons).toBe(event.distance * 20);
+      expect(event.distance).toBeLessThanOrEqual(ship.jumpRating);
+      expect(event.fuelConsumedTons).toBe(
+        event.distance * (ship.displacementTons / 10),
+      );
       location = event.toId;
       fuel -= event.fuelConsumedTons;
       distance += event.distance;
@@ -300,7 +351,7 @@ function expectBalanced(systems: readonly StarSystem[], result: RouteResult) {
     }
     expect(event.fuelAfterTons).toBe(fuel);
     expect(fuel).toBeGreaterThanOrEqual(0);
-    expect(fuel).toBeLessThanOrEqual(60);
+    expect(fuel).toBeLessThanOrEqual(ship.jumpFuelCapacityTons);
   }
   expect(location).toBe(result.destinationId);
   expect([cost, jumps, distance, fuel]).toEqual([
@@ -478,4 +529,282 @@ it('exhausts reachable free-scooping cycles when the destination is isolated', (
     originId: 's',
     destinationId: 't',
   });
+});
+
+function configured(
+  systems: readonly StarSystem[],
+  ship: ShipSpecifications,
+  initialFuelTons: number,
+) {
+  return createEngineRouter(
+    systems,
+    createClassicTraveller1981Rules(ship, { initialFuelTons }),
+  );
+}
+
+it('honors drive rating, displacement, and ship-specific reachability', () => {
+  const systems = [1, 2, 3, 4, 5].map((row) => system(String(row), row, 'C'));
+  for (const [displacementTons, jumpRating, jumpCount] of [
+    [100, 1, 4],
+    [100, 2, 2],
+    [400, 4, 1],
+  ]) {
+    const ship = {
+      ...SHIP,
+      displacementTons: displacementTons!,
+      jumpRating: jumpRating!,
+      jumpFuelCapacityTons: (displacementTons! * jumpRating!) / 10,
+    };
+    const result = configured(
+      systems,
+      ship,
+      ship.jumpFuelCapacityTons,
+    ).findRoute('1', '5');
+    expect(result).toMatchObject({
+      status: 'reachable',
+      jumpCount,
+      totalDistance: 4,
+    });
+    expectBalanced(systems, result, ship, {
+      initialFuelTons: ship.jumpFuelCapacityTons,
+    });
+  }
+  const separated = [system('a', 1), system('b', 3)];
+  const ship = {
+    ...SHIP,
+    displacementTons: 100,
+    jumpRating: 1,
+    jumpFuelCapacityTons: 20,
+  };
+  expect(configured(separated, ship, 20).findRoute('a', 'b').status).toBe(
+    'unreachable',
+  );
+  expect(
+    configured(separated, { ...ship, jumpRating: 2 }, 20).findRoute('a', 'b')
+      .status,
+  ).toBe('reachable');
+});
+
+it('requires fuel for the first jump, buying or scooping precisely the shortfall', () => {
+  const ship = {
+    ...SHIP,
+    displacementTons: 100,
+    jumpRating: 2,
+    jumpFuelCapacityTons: 27,
+  };
+  for (const [port, gasGiant, hasFuelScoops, cost] of [
+    ['X', false, true, undefined],
+    ['C', false, true, 1700],
+    ['X', true, true, 0],
+    ['X', true, false, undefined],
+    ['D', true, false, 1700],
+  ] as const) {
+    const systems = [system('a', 1, port, gasGiant), system('b', 3)];
+    const particulars = { ...ship, hasFuelScoops };
+    const result = configured(systems, particulars, 3).findRoute('a', 'b');
+    if (cost === undefined) expect(result.status).toBe('unreachable');
+    else {
+      expect(reached(result)).toMatchObject({
+        totalCostCredits: cost,
+        fuelRemainingTons: 0,
+      });
+      expect(reached(result).events[0]).toMatchObject({
+        kind: 'refuel',
+        tons: 17,
+        fuelBeforeTons: 3,
+        fuelAfterTons: 20,
+      });
+      expectBalanced(systems, result, particulars, { initialFuelTons: 3 });
+    }
+  }
+});
+
+it('carries purchased fuel across a dry system when capacity permits', () => {
+  const systems = [system('a', 1, 'C'), system('b', 3), system('c', 5)];
+  const ship = {
+    ...SHIP,
+    displacementTons: 100,
+    jumpRating: 2,
+    jumpFuelCapacityTons: 40,
+  };
+  const result = configured(systems, ship, 0).findRoute('a', 'c');
+  expect(stops(result)).toEqual(['b', 'c']);
+  expect(reached(result)).toMatchObject({
+    totalCostCredits: 4000,
+    fuelRemainingTons: 0,
+  });
+  expect(reached(result).events[0]).toMatchObject({ kind: 'refuel', tons: 40 });
+  expectBalanced(systems, result, ship, { initialFuelTons: 0 });
+  expect(
+    configured(systems, { ...ship, jumpFuelCapacityTons: 39 }, 0).findRoute(
+      'a',
+      'c',
+    ).status,
+  ).toBe('unreachable');
+});
+
+it('preserves residual initial fuel and full-tank residues without rounding', () => {
+  const systems = [system('a', 1, 'X', true), system('b', 3), system('c', 5)];
+  const ship = {
+    ...SHIP,
+    displacementTons: 100,
+    jumpRating: 2,
+    jumpFuelCapacityTons: 43,
+  };
+  const result = configured(systems, ship, 43).findRoute('a', 'c');
+  expect(reached(result)).toMatchObject({
+    totalCostCredits: 0,
+    fuelRemainingTons: 3,
+  });
+  expect(reached(result).events.filter((e) => e.kind === 'refuel')).toEqual([]);
+  expectBalanced(systems, result, ship, { initialFuelTons: 43 });
+  expect(
+    reached(configured(systems, ship, 7).findRoute('b', 'b')),
+  ).toMatchObject({
+    events: [],
+    fuelRemainingTons: 7,
+    totalCostCredits: 0,
+  });
+});
+
+it('revisits systems to collect fuel with a different displacement and partial starting tank', () => {
+  const systems = [
+    system('s', 5, 'C'),
+    system('b', 5, 'D', false, 4),
+    system('g', 6, 'X', true, 5),
+    system('t', 2, 'X', false, 4),
+  ];
+  const ship = { ...SHIP, displacementTons: 400, jumpFuelCapacityTons: 120 };
+  const result = configured(systems, ship, 113).findRoute('s', 't');
+  expect(stops(result)).toEqual(['b', 'g', 'b', 't']);
+  expect(reached(result)).toMatchObject({
+    totalCostCredits: 8700,
+    jumpCount: 4,
+    totalDistance: 8,
+  });
+  expect(
+    referenceDetailed(systems, 0, 3, ship, { initialFuelTons: 113 })?.score,
+  ).toEqual([8700, 4, 8]);
+  expectBalanced(systems, result, ship, { initialFuelTons: 113 });
+});
+
+it('matches independent one-ton optimal scores and full tie keys for variable ships', () => {
+  const configurations = [
+    [100, 1, 17, 4, false, true],
+    [100, 2, 27, 13, true, true],
+    [110, 2, 31, 7, true, true],
+    [100, 2, 40, 0, true, true],
+    [200, 3, 63, 7, true, true],
+    [400, 4, 173, 31, true, true],
+    [400, 2, 87, 83, true, false],
+    [400, 4, 40, 0, true, true],
+    [200, 3, 60, 60, true, true],
+  ] as const;
+  for (const [
+    displacementTons,
+    jumpRating,
+    jumpFuelCapacityTons,
+    initialFuelTons,
+    hasFuelScoops,
+    streamlined,
+  ] of configurations) {
+    const ship = {
+      displacementTons,
+      jumpRating,
+      jumpFuelCapacityTons,
+      hasFuelScoops,
+      streamlined,
+    };
+    const state = { initialFuelTons };
+    for (const hexes of [
+      [
+        [1, 1],
+        [1, 2],
+        [1, 4],
+        [1, 6],
+      ],
+      [
+        [2, 2],
+        [3, 3],
+        [4, 2],
+        [4, 5],
+      ],
+    ]) {
+      for (let mask = 0; mask < 81; mask++) {
+        let value = mask;
+        const systems = hexes.map(([column, row], i) => {
+          const facility = value % 3;
+          value = Math.floor(value / 3);
+          return system(
+            ['s', 'Z', 'a', 't'][i]!,
+            row!,
+            facility === 1 ? (['A', 'B', 'C', 'D'] as const)[i]! : 'X',
+            facility === 2,
+            column!,
+          );
+        });
+        const router = configured(systems, ship, initialFuelTons);
+        const reversed = configured(
+          systems.toReversed(),
+          ship,
+          initialFuelTons,
+        );
+        for (let start = 0; start < 4; start++)
+          for (let end = 0; end < 4; end++) {
+            const expected = referenceDetailed(
+              systems,
+              start,
+              end,
+              ship,
+              state,
+            );
+            const result = router.findRoute(
+              systems[start]!.id,
+              systems[end]!.id,
+            );
+            expect(result.status).toBe(expected ? 'reachable' : 'unreachable');
+            if (result.status === 'reachable') {
+              expect([
+                result.totalCostCredits,
+                result.jumpCount,
+                result.totalDistance,
+              ]).toEqual(expected!.score);
+              expect(
+                result.events
+                  .filter((e) => e.kind === 'jump')
+                  .map((e) => [e.toId, e.fuelBeforeTons]),
+              ).toEqual(expected!.key);
+              expectBalanced(systems, result, ship, state);
+            }
+            expect(
+              reversed.findRoute(systems[start]!.id, systems[end]!.id),
+            ).toEqual(result);
+          }
+      }
+    }
+  }
+});
+
+it('handles large hulls and nonaligned fuel on a full 80-system subsector', () => {
+  const systems = Array.from({ length: 80 }, (_, i) =>
+    system(
+      String(i).padStart(2, '0'),
+      (i % 10) + 1,
+      'C',
+      i % 3 === 0,
+      Math.floor(i / 10) + 1,
+    ),
+  );
+  const ship = {
+    ...SHIP,
+    displacementTons: 5000,
+    jumpRating: 6,
+    jumpFuelCapacityTons: 4999,
+  };
+  const router = configured(systems, ship, 47);
+  for (const destination of ['00', '09', '39', '79']) {
+    const result = router.findRoute('00', destination);
+    expect(result.status).toBe('reachable');
+    expectBalanced(systems, result, ship, { initialFuelTons: 47 });
+  }
 });

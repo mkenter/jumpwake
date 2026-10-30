@@ -16,13 +16,13 @@ table is printed p. 10 (viewer page 12). PDFs and extracted text are not tracked
 | Mechanic                    | Independently summarized 1981 rule and source                                                                                                                                                                | Jumpwake behavior, match and deferred work                                                                                                                                                                                                                                                                                                          |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Coordinates and distances   | Book 3, Worlds / Star Mapping, p. 4; Subsector Map Grid, p. 13: eight columns by ten rows, one parsec per hex; numbered columns are staggered.                                                               | Matches the one-based column/row layout and hex distance. Axial q/r are internal, not addresses. Conversion: q = column − 1; r = row − 1 − floor(q/2). Only authored-system stops are searched; empty-space jumps are outside scope. The printed form appears to include an extra bottom row; the p. 4 dimensions govern this demo, pending review. |
-| Jump range                  | Book 2, Interstellar Travel, p. 4; Required Starship Components, pp. 13–14: jump rating limits parsecs, with hull/drive potential, sufficient power plant and computer support.                              | Matches the fixed effective Jump-3 range. Assumes a working, adequately powered drive and supporting computer/software. Does not validate a complete ship design; defer those checks.                                                                                                                                                               |
-| Jump fuel and shorter jumps | Book 2, Required Starship Components / D. Fuel, pp. 14–15: jump allocation is 0.1 × displacement × jump number; shorter jumps consume the lower amount for the jump used.                                    | Matches 20/40/60 tons for this 200-ton ship. No route correction needed. Four states remain specific to this ship and initial full allocation.                                                                                                                                                                                                      |
+| Jump range                  | Book 2, Interstellar Travel, p. 4; Required Starship Components, pp. 13–14: jump rating limits parsecs, with hull/drive potential, sufficient power plant and computer support.                              | Uses the configured effective jump rating (supported range 1–6). Assumes a working, adequately powered drive and supporting computer/software. Does not validate a complete ship design; defer those checks.                                                                                                                                        |
+| Jump fuel and shorter jumps | Book 2, Required Starship Components / D. Fuel, pp. 14–15: jump allocation is 0.1 × displacement × jump number; shorter jumps consume the lower amount for the jump used.                                    | Uses displacement ÷ 10 × actual parsecs. Whole-ton inputs retain exact partial fuel and capacity; the default still consumes 20/40/60 tons.                                                                                                                                                                                                         |
 | Port availability           | Book 3, Starport Types, p. 10: A/B supply refined fuel; C/D supply only unrefined fuel; E has none; X has no port.                                                                                           | C/D and E/X match. A/B offer both grades in the existing demo: **provisional**, because the table does not explicitly establish unrefined sales at A/B. Retained to preserve routes; later review must settle that policy before claiming full fidelity.                                                                                            |
 | Prices                      | Book 2, Starship Malfunctions, p. 6; Starship Economics / Fuel, p. 9: refined Cr500/ton, unrefined Cr100/ton at most ports.                                                                                  | Matches baseline prices, including D. Unlimited supply and uniform prices are demo assumptions; local shortages, exceptions and delivery costs are excluded.                                                                                                                                                                                        |
-| Gas giants                  | Book 2, Starship Malfunctions, p. 6; Book 3, Star Mapping / Gas Giants, p. 5: skimming provides free unrefined fuel, including without a port; streamlined vessels can skim. Book 3 generally allows a week. | Matches free unrefined supply for the streamlined, scoop-equipped demo. Unlimited access assumed; transit and collection time omitted. Book 2 p. 4 describes immediate refueling and re-jumping when hurried; timing reconciliation remains unresolved and does not affect this cost model.                                                         |
+| Gas giants                  | Book 2, Starship Malfunctions, p. 6; Book 3, Star Mapping / Gas Giants, p. 5: skimming provides free unrefined fuel, including without a port; streamlined vessels can skim. Book 3 generally allows a week. | Offers free unrefined supply only when both streamlining and fuel scoops are enabled. Unlimited access assumed; transit and collection time omitted. Book 2 p. 4 describes immediate refueling and re-jumping when hurried; timing reconciliation remains unresolved and does not affect this cost model.                                           |
 | Wilderness water            | Book 2, Starship Malfunctions, p. 6; Optional Components / Atmospheric Streamlining, p. 15: lake/ocean water can provide unrefined fuel.                                                                     | Unimplemented: data has no water-access field. Do not infer water from fictional descriptions. Add explicit facilities and access constraints later.                                                                                                                                                                                                |
-| Equipment                   | Book 2, Atmospheric Streamlining, p. 15: streamlining includes scoops for giants and open water; must be chosen at construction.                                                                             | Fixed ship assumes both. No configurable equipment exposed; processing is not assumed. These sections do not establish a processor model for this implementation; any future processing mechanics need a source review.                                                                                                                             |
+| Equipment                   | Book 2, Atmospheric Streamlining, p. 15: streamlining includes scoops for giants and open water; must be chosen at construction.                                                                             | Configurable scoops and streamlining gate giant access; neither implies unrefined-fuel risk protection. Processing is not assumed. These sections do not establish a processor model for this implementation; any future processing mechanics need a source review.                                                                                 |
 | Grades and risk             | Book 2, Starship Malfunctions, p. 6: unrefined fuel can increase drive-failure and misjump risk unless equipped for it; engineering staffing and maintenance affect failure.                                 | Grades recorded but not separate tank inventories. Risks excluded, so cheapest fuel dominates refined fuel. Scoops alone are not asserted to remove the unrefined-fuel penalty. Equipment needed to qualify for that exemption remains unspecified here. Defer risk, mixing and malfunction simulation.                                             |
 | Tankage and power plant     | Book 2, D. Fuel, pp. 14–15: minimum tankage is 0.1 × M × Jn + 10 × Pn; plant allocation supports four weeks of routine operations and maneuver.                                                              | Partial model: 60 tons is jump allocation only, not total tankage. A rating-3 plant would require another 30 tons under that formula. Plant rating and consumption are not modeled; do not present this as a validated ship design.                                                                                                                 |
 | Operations                  | Book 2, Interstellar Travel, p. 4; Starship Malfunctions, p. 6: roughly a week per jump regardless of length; proximity to worlds affects misjump risk, notably within 100 and 10 diameters.                 | No duration, jump-entry geometry, maintenance, crew, access restrictions or operational costs. Arrival has no modeled reserve; initial fuel is a sunk cost. These are routing policies, not universal CT rules.                                                                                                                                     |
@@ -37,54 +37,98 @@ jump consumption and priced sources. The engine imports no CT implementation.
 fuel state, fuel rules and starport data types. Application composition supplies
 that implementation explicitly; Ember Reach remains independently authored data.
 
-The search deliberately retains four 20-ton states, 60 tons initially aboard and
-a maximum three-parsec edge. It rejects incompatible jump-consumption functions.
-This is a replaceable rules boundary within a constrained router, not general ship
-support. Rules callbacks must be deterministic and return finite nonnegative prices.
-No existing route behavior changes in this milestone; provisional A/B supply and
-excluded risk remain explicit above.
+`createClassicTraveller1981Rules(ship, state)` is the API for the future
+vessel-particulars form. `ShipSpecifications` contains `displacementTons`,
+`jumpRating`, `jumpFuelCapacityTons`, `hasFuelScoops`, and `streamlined`;
+`ShipOperatingState` contains `initialFuelTons`. `validateShip(ship, state)`
+performs the same checks without constructing rules. Recreate rules and router
+when particulars or starting fuel change; construction snapshots their values.
+`SHIP`, `INITIAL_STATE`, and `classicTraveller1981` retain the demonstration
+configuration. The existing UI uses these defaults, including displayed particulars.
 
-Next milestone must parameterize capacity, starting fuel, fuel granularity and
-range together; establish an exact state-space model for arbitrary consumption;
-validate ship specifications separately from current operational state; and extend
-the independent oracle before exposing configuration. Power-plant reserves and
-elapsed time need an explicit policy before calculating total operating fuel.
-Grades/equipment require inventory and eligibility decisions. No vessel UI, rules
-selector or new optimization objective is included here.
+Supported displacement is 100–5000 tons in multiples of 10; jump rating is an
+integer 1–6; capacity is whole tons from 1 to displacement; starting fuel is whole
+tons from zero to capacity. Equipment flags must be booleans. These are explicit
+prototype support limits, not a claim that every combination is a legal ship
+design. Capacity may be insufficient for the rated jump: search uses the actual
+fuel available. Equipment flags are access constraints, not construction validation.
+A ship can buy unrefined fuel without scoops. Streamlining alone or scoops alone
+never enables giant access. No fractional values are silently dropped.
+
+Capacity means **available jump-fuel allocation**, not total tankage; starting
+fuel means the current quantity in that allocation. No plant consumption or
+reserve is deducted. Adequate drive, power plant and computer support are assumed;
+minimum combined tankage and component compatibility remain unvalidated.
+Fuel processing, water access, risk exemption equipment, grade mixing and time
+remain outside this model. The provisional A/B supply policy is unchanged.
 
 ## Routing implementation
 
-`createRouter(map, rules)` in `src/engine/routing.ts` snapshots and validates the map, sorts
-systems by ID using JavaScript code-unit order, and precomputes Jump-1/2/3
-neighbors. `findRoute(originId, destinationId)` runs lexicographic Dijkstra over
-(system, remaining fuel). Its four fuel levels are 0/20/40/60 tons. This is exact
-for a full initial tank, integer parsec distances, linear unlimited fuel prices,
-and no arrival reserve: fractional purchases cannot improve an optimal journey.
+`createRouter(map, rules)` in `src/engine/routing.ts` validates and snapshots
+IDs, addresses, jump capabilities, consumption and source records, sorts systems
+by code-unit ID order, and precomputes neighbors within the supplied range and
+capacity. `TravelRules<S>` supplies `maxJumpDistance`, `jumpFuelCapacityTons`,
+`initialFuelTons`, deterministic system validation, distance-based consumption,
+and ship-eligible fuel sources. The engine has no CT implementation dependency.
 
-Each edge optionally adds fuel and then makes one jump. All feasible departure
-fuel levels are considered, including carrying fuel through dry stops. Only the
-cheapest available source is needed under the grade policy above. Pairing fuel
-with jumps removes zero-cost refueling cycles; every edge increases jump count.
-A physical system may still be revisited with more fuel when a useful scooping
-detour requires it; a settled fuel state is never revisited.
+### Exact fuel states
 
-Labels minimize purchased credits, then jumps, then total parsecs. Final ties
-compare the sequence of `(next system ID, departure fuel)` pairs lexicographically,
-using ascending ID and then ascending fuel. This also deterministically selects
-fuel transactions without adding an arrival-reserve objective. Equal-state
-labels have identical future options. On a primary-score tie, path keys have
-the same length (one entry per jump), so appending the same continuation preserves
-their order. Every edge strictly increases the primary score through its jump
-count, even when scooping is free. The earliest settled destination state is
-optimal; exhausting the search returns `status: 'unreachable'`.
+Let C be capacity, F starting fuel, and g the greatest common divisor of positive
+whole-ton jump consumptions. Retain every balance in [0, C] congruent to **0, C,
+or F modulo g**. For CT, g = displacement / 10. The default retains 0/20/40/60;
+a 100-ton ship with C=27 and F=13 retains 0/3/7/10/13/17/20/23/27.
+This includes initial fuel, empty and full tanks, and is closed under feasible
+jump consumption. Purchases are differences between balances, so a 17-ton
+shortfall is represented exactly even when each parsec consumes 10 tons.
 
-For N systems, there are V = 4N states and at most E = O(N²) combined edges.
-Precomputation takes O(N²) time and space. A simple linear scan selects each next
-label; primary-score work is O(V² + E). Stored path keys and itineraries have
-length L ≤ V: including their comparisons/copies, the conservative query bound is
-O((V² + E)L) time and O(VL + N²) space, hence O(N³) time and O(N²) space.
-At most 80 systems fit this map. No heap, global cache, or rules framework is
-needed. Repeated queries reuse geometry but own fresh labels and result objects.
+Why these states preserve optimal routes: fix any finite sequence of jumps.
+Its feasible departure quantities satisfy capacity bounds, sufficient fuel for
+the next jump, and nonnegative purchases; dry stops require carrying the previous
+arrival quantity. Cost is linear in purchases. Minimize that cost, then the
+lexicographic departure quantities for this fixed walk. A minimizing vertex
+exists. At a vertex, each connected block of tight carry-without-purchase
+constraints must be anchored by initial fuel, a full departure tank, or an empty
+arrival tank; otherwise that whole block can shift and is not a vertex. Every
+other quantity in the block differs by sums of jump consumptions. Thus all vertex
+balances have one of the three retained residues. Integral anchors and consumptions
+also make those vertices integral: fractional purchases cannot improve either
+cost or the departure-fuel tie-break. Applying this to every candidate walk
+preserves the globally optimal score and deterministic itinerary, including revisits.
+This reasoning requires unlimited linear-price fuel, no fuel disposal, no reserve,
+and no simulated grade inventory; it does not generalize to arbitrary fuel rules.
+
+### Search and bounds
+
+`findRoute(originId, destinationId)` uses lexicographic Dijkstra on (system,
+remaining fuel). Each edge optionally refuels and makes one jump, enumerating all
+feasible retained departure quantities. Only the cheapest eligible source is
+needed under the grade policy. Pairing purchases with jumps removes zero-cost
+refueling cycles; a physical system may still be revisited with different fuel.
+
+Labels minimize purchased credits, jumps, then total parsecs. Final ties compare
+the sequence of `(next system ID, departure fuel)` pairs, ascending ID then fuel.
+Equal-state labels have identical future options; primary-score ties have equally
+long keys, so appending the same continuation preserves their order. Each edge
+strictly increases the primary score through its jump count, even with free fuel.
+The first settled destination is optimal. Exhaustion returns `unreachable`.
+Initial fuel is a sunk cost and arrival requires no reserve. A same-world journey
+has no events or cost and retains its starting fuel.
+
+For N systems and K retained fuel levels, V=NK and E=O(N²K²) potential combined
+edges. Geometry takes O(N²) time/space. An indexed binary heap replaces linear
+label selection and holds at most V entries. Primary-score work is
+O((V+E) log V); including path-key comparison/copying of length L≤V, the conservative
+bound is O((V+E)L log V) time, O(VL+N²) space. Events use settled-parent links and
+are reconstructed once; full event histories are not copied per relaxation.
+
+Unique addresses bound N to 80. The CT input domain gives K≤31 (at most 2480
+states), independent of absolute displacement; the default has K=4. The generic
+engine rejects more than 64 critical levels before searching (at most 5120
+states), capacity/consumption outside whole tons 1–1,000,000, and range outside
+integers 1–16. Those are computational support limits. Prices must be nonnegative
+whole credits per ton, bounded by floor(MAX_SAFE_INTEGER / (max(1,N)×K×C)); this
+keeps every possible simple-state-path credit total exact. Unsupported models
+throw rather than approximate. CT's 0/100/500 prices fit comfortably.
 
 Results contain chronologically ordered refueling and jump events, per-event
 fuel before/after, transaction source/grade/price, total purchased cost, jumps,
@@ -94,18 +138,24 @@ paid two-jump corridor, dry worlds, all six port classes, and isolated Last Embe
 The integrated demo adds Orison, Serein and Ilex: Aster Quay–Orison costs Cr4,000
 and revisits Serein after scooping at Ilex. The UI preserves the event order and
 distinguishes repeated occurrences in the manifest.
-Tests compare tiny one-column and multidimensional networks against a separate
-one-ton Bellman–Ford solver across all dry/paid/free facility assignments and
-endpoint pairs. Its geometry uses display-grid breadth-first walks independent
-of the axial conversion and distance formula; all 6,400 subsector address pairs
-are cross-checked. Itinerary checks independently replay fuel, prices, distances,
-and locations, including repeated visits. Dedicated cases cover departure-fuel
-and code-unit ID ties and exhaustion of free-scooping cycles.
+Tests compare one-column and multidimensional networks against a separate
+one-ton Bellman–Ford solver. It uses individual one-ton refueling edges, its own
+CT arithmetic and eligibility, display-grid breadth-first geometry, and string
+path keys; it does not call the production rules, heap or fuel-state compression.
+The original 3,888 default facility/endpoint comparisons remain. Another 23,328
+comparisons span nine ship/state/equipment configurations, two geometries, all
+81 dry/paid/free assignments, and all endpoint pairs. These compare cost, jumps,
+distance **and full deterministic departure keys**, with independently replayed
+ledgers and reversed input order. All 6,400 address distances are cross-checked
+separately. Explicit cases cover first-jump shortfalls, paid/free partial refueling,
+different drives/displacements/capacities, dry carry-through, residual fuel,
+scooping detours with return visits, invalid inputs, same-world and unreachable
+journeys. Default presentation and browser regression tests retain the manifest.
 
-Limitations remain the fixed ship, one subsector, deterministic facilities, and
-excluded time/risk/operating costs above. Fuel grades are recorded rather than
-tracked as separate tank inventories. This is a routing prototype, not a ship
-operations simulation.
+Limitations remain one subsector, authored-system stops, deterministic facilities,
+and excluded time/risk/operating costs above. Fuel grades are descriptive rather
+than separate inventories. This is a routing prototype, not a ship operations
+simulation. No errata verification is claimed.
 
 ## Content and licensing
 

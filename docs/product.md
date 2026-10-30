@@ -8,8 +8,9 @@ at the table.
 
 - Classic Traveller 1981 Books 2 and 3 as the primary rules target; see [rules.md](rules.md) for verification status.
 - One 8 × 10 subsector containing authored, fictional star systems.
-- One fixed 200-ton Jump-3 ship with fuel scoops and 60 tons allocated to jump
-  fuel, initially full.
+- A default 200-ton Jump-3 ship with scoops, streamlining, and 60 tons allocated
+  to jump fuel, initially full. A validated programmatic API supports other ship
+  particulars and partial starting fuel; vessel controls are deferred.
 - Routes minimizing total **purchased fuel cost**, breaking ties by fewest jumps,
   then shortest total distance, with deterministic results.
 - Routes account for available fuel, refueling opportunities, and jump constraints.
