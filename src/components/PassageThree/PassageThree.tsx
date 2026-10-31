@@ -160,7 +160,11 @@ export function PassageThree() {
 
   function navigate(target: 'passage' | 'chart' | 'manifest') {
     if (target !== 'passage') setView(target);
+    const navigationFocus = document.activeElement;
     requestAnimationFrame(() => {
+      // A world or another control may receive focus before this frame runs.
+      // Do not overwrite that newer intent with a stale navigation request.
+      if (document.activeElement !== navigationFocus) return;
       const section = document.getElementById(
         target === 'passage' ? 'journey-controls' : `passage-${target}`,
       );

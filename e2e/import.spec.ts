@@ -41,8 +41,13 @@ for (const width of [1440, 1024, 390]) {
         .selectOption('hex-0103');
       await expect(page.getByRole('status').first()).toContainText('1 jump');
       await page.getByRole('button', { name: 'Chart', exact: true }).click();
-      await page.locator('[data-world="hex-0102"]').focus();
-      await page.keyboard.press('Enter');
+      const world = page.locator('[data-world="hex-0102"]');
+      await world.focus();
+      await expect(world).toBeFocused();
+      await page.keyboard.press(count === 24 ? 'Space' : 'Enter');
+      await expect(
+        page.getByRole('heading', { name: /World 2 Full Name/ }),
+      ).toBeVisible();
       await expect(page.getByText('Test supplied remark')).toBeVisible();
       await page.getByRole('button', { name: 'Close world details' }).click();
       await page
