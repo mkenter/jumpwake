@@ -9,7 +9,11 @@ import {
   type Stop,
 } from '../presentation';
 import { routeLegs } from './routeGeometry';
-import { placeWorldLabels, type LabelMetrics } from './labelLayout';
+import {
+  placeWorldLabels,
+  revealWorldLabels,
+  type LabelMetrics,
+} from './labelLayout';
 import styles from './PassageChart.module.css';
 
 type Props = {
@@ -69,6 +73,8 @@ export function PassageChart({
         width: Math.max(a.width, b.width),
         top: a.y,
         bottom: b.y + b.height,
+        nameBottom: a.y + a.height,
+        nameWidth: a.width,
       };
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Measure SVG glyphs before paint so label placement does not visibly jump.
@@ -79,6 +85,9 @@ export function PassageChart({
       placeWorldLabels(
         worlds.map((world) => ({
           id: world.id,
+          markerRadius: stops.some((stop) => stop.world === world.id)
+            ? markerRadius
+            : 3.5,
           ...point(world),
           ...(metrics[world.id] ?? {
             width: Math.max(
@@ -91,8 +100,22 @@ export function PassageChart({
         })),
         legs,
         markerRadius,
+        [origin, destination],
       ),
-    [metrics, legs, markerRadius, largeMarkers, worlds],
+    [
+      metrics,
+      legs,
+      markerRadius,
+      largeMarkers,
+      worlds,
+      origin,
+      destination,
+      stops,
+    ],
+  );
+  const shownLabels = revealWorldLabels(
+    labels,
+    [highlight, selected].filter((id): id is string => Boolean(id)),
   );
   return (
     <svg
@@ -151,7 +174,12 @@ export function PassageChart({
       )}
       {worlds.map((world) => {
         const p = point(world);
-        const label = labels.get(world.id) ?? { x: p.x + 15, y: p.y - 11 };
+        const label = shownLabels.get(world.id) ?? {
+          x: p.x + 15,
+          y: p.y - 11,
+          visible: false,
+          compact: false,
+        };
         const index = stops.findIndex((stop) => stop.world === world.id);
         const endpoint =
           world.id === origin
@@ -206,23 +234,20 @@ export function PassageChart({
               r={index >= 0 ? markerRadius : 3.5}
             />
             <g
-              visibility={
-                worlds.length > 15 &&
-                selected !== world.id &&
-                highlight !== world.id &&
-                !endpoint
-                  ? 'hidden'
-                  : undefined
-              }
+              pointerEvents="none"
+              visibility={label.visible ? 'visible' : 'hidden'}
               data-world-label={world.id}
               transform={`translate(${label.x} ${label.y})`}
             >
               <text data-label-name className={styles.name} x="0" y="0">
-                {world.sourceHex && world.name.split(' ')[0]!.length > 12
-                  ? `${world.name.split(' ')[0]!.slice(0, 11)}…`
+                {world.sourceHex
+                  ? world.name.length > 12
+                    ? `${world.name.slice(0, 11)}…`
+                    : world.name
                   : world.name.split(' ')[0]}
               </text>
               <text
+                visibility={label.compact ? 'hidden' : undefined}
                 data-label-code
                 className={styles.code}
                 x="0"

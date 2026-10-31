@@ -169,8 +169,15 @@ metadata do not introduce additional operational restrictions or fuel sources.
 Imported worlds receive no invented descriptions. Source comments are available
 in the bureau; supplied columns are available in world inspection.
 
-Above 15 worlds, labels appear for endpoints and the focused, hovered or inspected
-world; every marker retains its full accessible name and tooltip. Inspect a marker
-or use the address-qualified endpoint selectors to find a world.
+Labels are packed deterministically around measured text, world markers and route
+curves, prioritizing endpoints and route worlds. Labels without clear space are
+shown as names alone when that fits, or omitted at rest and revealed on hover, focus or inspection without moving the
+resting layout. Every marker retains its full accessible name and tooltip. Inspect
+a marker or use the address-qualified endpoint selectors to find a world.
 Legacy fixed-width SEC and T5 column-delimited files, cross-subsector routing,
 metadata XML, and durable imported-map storage remain unsupported.
+
+For optional real-data browser verification, set `JUMPWAKE_TEST_CHART` to a local
+T5 tab subsector file and run `npm run test:e2e -- e2e/chart-labels.spec.ts`.
+The same collision and keyboard checks run against synthetic 3-, 24-, and 80-world
+charts without that variable. Keep downloaded source datasets outside the repository.

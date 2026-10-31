@@ -146,5 +146,6 @@ chart unchanged; no partial imports are accepted. The active chart explicitly
 supplies the router, SVG, selectors, manifest and inspection. Imported metadata
 is displayed as supplied; fuel eligibility remains governed by CT 1981 rules.
 See the [README](../README.md#local-navigation-charts) for format, validation and
-coordinate details. Dense charts selectively reveal labels while retaining all
-inspection targets and full accessible world names.
+coordinate details. Charts deterministically pack labels into clear space, giving endpoints and route
+worlds priority. Hover, focus and inspection reveal omitted labels while retaining
+all inspection targets and full accessible world names.

@@ -1,9 +1,20 @@
 import { curvePoint, type ChartPoint, type RouteLeg } from './routeGeometry';
 
 type Rect = { left: number; top: number; right: number; bottom: number };
-export type LabelMetrics = { width: number; top: number; bottom: number };
-export type WorldLabel = LabelMetrics & ChartPoint & { id: string };
-type Placement = ChartPoint & { bounds: Rect };
+export type LabelMetrics = {
+  width: number;
+  top: number;
+  bottom: number;
+  nameBottom?: number;
+  nameWidth?: number;
+};
+export type WorldLabel = LabelMetrics &
+  ChartPoint & { id: string; markerRadius?: number };
+export type Placement = ChartPoint & {
+  bounds: Rect;
+  visible: boolean;
+  compact?: boolean;
+};
 const chartBounds = { left: -16, top: -12, right: 622, bottom: 776 };
 
 function overlap(a: Rect, b: Rect) {
@@ -46,6 +57,7 @@ export function placeWorldLabels(
   labels: readonly WorldLabel[],
   legs: readonly RouteLeg[],
   markerRadius: number,
+  endpoints: readonly string[] = [],
 ) {
   const segments: [ChartPoint, ChartPoint][] = [];
   const visits = new Map<string, number>();
@@ -64,37 +76,51 @@ export function placeWorldLabels(
   }
   const placements = new Map<string, Placement>();
   const ordered = [...labels].sort(
-    (a, b) => (visits.get(b.id) ?? 0) - (visits.get(a.id) ?? 0),
+    (a, b) =>
+      Number(endpoints.includes(b.id)) - Number(endpoints.includes(a.id)) ||
+      Number(visits.has(b.id)) - Number(visits.has(a.id)) ||
+      a.x - b.x ||
+      a.y - b.y ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
   );
-  const gap = markerRadius + 7;
-  // A second pass lets early labels respond to the positions of later ones.
-  for (let pass = 0; pass < 2; pass++) {
-    for (const label of ordered) {
+  // Greedy packing in a stable priority order. Only accepted labels reserve space.
+  // Keep a fallback position for interaction, but never accept a collision.
+  for (const label of ordered) {
+    let best: Placement | undefined;
+    let bestScore = Infinity;
+    for (const compact of label.nameBottom === undefined
+      ? [false]
+      : [false, true]) {
+      const width = compact ? (label.nameWidth ?? label.width) : label.width;
+      const bottom = compact ? label.nameBottom! : label.bottom;
+      const gap = (label.markerRadius ?? markerRadius) + 7;
       const right = label.x + gap;
-      const left = label.x - gap - label.width;
-      const above = label.y - gap - label.bottom;
+      const left = label.x - gap - width;
+      const above = label.y - gap - bottom;
       const below = label.y + gap - label.top;
-      const middle = label.y - (label.top + label.bottom) / 2;
+      const middle = label.y - (label.top + bottom) / 2;
       const candidates = [
         { x: right, y: label.y - 11 },
         { x: left, y: label.y - 11 },
         { x: right, y: below },
         { x: left, y: below },
-        { x: label.x - label.width / 2, y: above },
-        { x: label.x - label.width / 2, y: below },
+        { x: label.x - width / 2, y: above },
+        { x: label.x - width / 2, y: below },
         { x: right, y: above },
         { x: left, y: above },
         { x: right, y: middle },
         { x: left, y: middle },
+        { x: right, y: label.y - bottom },
+        { x: left, y: label.y - bottom },
+        { x: right, y: label.y - label.top },
+        { x: left, y: label.y - label.top },
       ];
-      let best: Placement | undefined;
-      let bestScore = Infinity;
       for (const [index, candidate] of candidates.entries()) {
         const bounds = {
           left: candidate.x - 4,
-          right: candidate.x + label.width + 4,
+          right: candidate.x + width + 4,
           top: candidate.y + label.top - 4,
-          bottom: candidate.y + label.bottom + 4,
+          bottom: candidate.y + bottom + 4,
         };
         if (
           bounds.left < chartBounds.left ||
@@ -103,11 +129,11 @@ export function placeWorldLabels(
           bounds.bottom > chartBounds.bottom
         )
           continue;
-        let score = index * 4;
+        let score = index * 4 + (compact ? 1000 : 0);
         for (const [a, b] of segments)
           if (crosses(a, b, bounds)) score += 10000;
         for (const [id, other] of placements)
-          if (id !== label.id) {
+          if (id !== label.id && other.visible) {
             const area = overlap(bounds, other.bounds);
             if (area > 0) score += 100000 + area * 20;
           }
@@ -116,15 +142,41 @@ export function placeWorldLabels(
             world.x - Math.max(bounds.left, Math.min(world.x, bounds.right)),
             world.y - Math.max(bounds.top, Math.min(world.y, bounds.bottom)),
           );
-          if (distance < markerRadius + 3) score += 1000000;
+          if (distance < (world.markerRadius ?? markerRadius) + 3)
+            score += 1000000;
         }
         if (score < bestScore) {
           bestScore = score;
-          best = { ...candidate, bounds };
+          best = { ...candidate, bounds, compact, visible: score < 10000 };
         }
       }
-      if (best) placements.set(label.id, best);
     }
+    if (best) placements.set(label.id, best);
   }
   return placements;
+}
+
+/** Reveal interacting labels without moving the resting layout. Temporarily hide
+ * lower-priority neighbors under their fallback label, then restore on blur. */
+export function revealWorldLabels(
+  placements: ReadonlyMap<string, Placement>,
+  active: readonly string[],
+) {
+  const result = new Map(placements);
+  const revealed: Placement[] = [];
+  for (const id of active) {
+    const label = placements.get(id);
+    if (!label) continue;
+    // Two simultaneous interactions may conflict; the first wins.
+    if (revealed.some((other) => overlap(label.bounds, other.bounds) > 0))
+      continue;
+    for (const [otherId, other] of result) {
+      if (otherId !== id && overlap(label.bounds, other.bounds) > 0)
+        result.set(otherId, { ...other, visible: false });
+    }
+    const shown = { ...label, visible: true };
+    result.set(id, shown);
+    revealed.push(shown);
+  }
+  return result;
 }
