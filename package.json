@@ -1,9 +1,9 @@
 {
   "name": "jumpwake",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A browser-based interstellar route planner for Classic Traveller 1981 tabletop play.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=24 <25"

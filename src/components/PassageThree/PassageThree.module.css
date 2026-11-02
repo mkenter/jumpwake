@@ -351,12 +351,17 @@
 .footer {
   display: flex;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 16px;
   margin-top: 20px;
   padding: 12px 0;
   border-top: 1px solid var(--line);
   color: var(--muted);
   font-size: 9px;
+}
+.footer a {
+  color: inherit;
+  text-underline-offset: 3px;
 }
 .sr {
   position: absolute;

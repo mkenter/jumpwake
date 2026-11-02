@@ -1,43 +1,64 @@
 # Jumpwake
 
-A browser-based interstellar route planner for Classic Traveller 1981 science-fiction
-tabletop RPGs. A focused play aid for plotting journeys across a hex subsector.
+<img src="public/brand/jumpwake-full.svg" alt="Jumpwake Navigation Service" width="420">
 
-## Current status
+**Work in progress · v0.1.0**
 
-The v0.1 working demo runs at `/`, using the Art Deco letterhead, pale chart and passage
-manifest. Choose any two worlds in the fictional Ember Reach subsector to
-calculate a route with jump-fuel accounting, fuel purchasing and scooping, and
-deterministic route preferences. Inspect worlds independently of endpoint
-selection; on phones, switch between Chart and Manifest with shared journey state.
+Jumpwake is an interstellar route planner for **Classic Traveller (1981)**, built with React and TypeScript. It plots journeys between worlds on a hex chart and works out where a ship can jump, where it can refuel, and what the fuel will cost.
 
-The routing engine completed its independent correctness review at `defd9df`
-and is connected to the application. The manifest shows departure followed by
-chronological jump and refueling events, including return visits. Same-world
-journeys need no travel; unreachable destinations have an explicit result.
-No rulebook text is included.
+The project is under active development and is not a complete Traveller simulation.
 
-Compare **Lowest fuel cost** (the initial preference) with **Fewest jumps**
-beside the passage summary. Each quotation shows jumps and purchased fuel credits;
-selecting it updates the summary, chart and manifest together. Identical complete
-itineraries share one concise outcome; unreachable journeys offer no alternatives.
-Both preferences use the same active vessel, starting fuel and CT81 rules.
+## What it does
 
-Try Aster Quay → Cinder Rest for the default ship's Cr0, three-jump scooping
-passage versus a Cr6,000, two-jump passage via Brass Ledger. Try Aster Quay → Orison
-for paid fuel and a return visit to Serein, and Aster Quay → Last Ember for an
-unreachable destination. Ember Reach in `src/data/emberReach.ts` is the authoritative map;
-it also holds world descriptions. Display formatting lives with the planner.
+- **Plots passages** on an interactive 8 × 10 subsector chart, with selectable worlds and a chronological journey manifest.
+- **Accounts for jump fuel**, ship range, partial fuel loads, fuel purchases, and gas-giant scooping.
+- **Compares two routes:** lowest purchased fuel cost and fewest jumps. They are not always the same journey.
+- **Lets you configure your vessel**, including displacement, jump rating, fuel capacity, starting fuel, scoops, and streamlining. The applied ship is saved locally in the browser.
+- **Imports Traveller Map T5 tab-delimited data** from a local file, including subsectors from a whole sector. Imported charts stay in the current browser session; files are not uploaded.
+- **Works on desktop and mobile**, with keyboard-accessible chart inspection, responsive chart/manifest views, and reduced-motion support.
 
-Vessel Particulars sits below the departure and destination controls. Its compact
-summary shows the active ship; Edit particulars opens an inline form for vessel
-specifications and current jump fuel. Apply validates and recalculates the selected
-passage. Cancel, Close, and Escape discard edits; Restore demonstration ship fills
-the draft and takes effect on Apply. Applied particulars are saved locally in this
-browser. Invalid or obsolete saved values fall back to the 200-ton Jump-3 demo.
+The default fictional chart, **Ember Reach**, is included so you can explore without downloading any Traveller data.
 
-The engine exports `createRouter` and coordinate conversions through
-`src/engine/index.ts`. The same configurable CT81 API powers the form:
+## Try a passage
+
+In Ember Reach, select **Aster Quay → Cinder Rest**. The default ship can make a three-jump passage using free fuel from gas giants, or a two-jump passage that buys fuel at Brass Ledger. Switch the routing preference to compare the itineraries.
+
+You can also try **Aster Quay → Orison** for a route with paid fuel and a return visit, or **Aster Quay → Last Ember** for an unreachable destination.
+
+To use your own chart, open **Chart bureau** and import a UTF-8 T5 tab-delimited file. The [Traveller Map data API](https://travellermap.com/doc/api) and [file-format documentation](https://travellermap.com/doc/fileformats) describe compatible exports. Jumpwake doesn't download or bundle official map data.
+
+## How it works
+
+The route planner models fuel aboard as part of the search state, so a cheaper journey can involve different refueling decisions, repeated visits, or additional jumps. Both preferences use the same routing engine and Classic Traveller 1981 rules adapter. The routing logic is independent of React.
+
+The implementation includes unit tests, an independent routing-correctness review, and Playwright tests covering imports, routes, keyboard and touch interaction, and different screen sizes.
+
+**Current boundaries:** planning is limited to one active subsector. Fuel risk, power-plant fuel, travel time, full ship construction, and some wilderness refueling options are not modeled. See [rules and assumptions](docs/rules.md) for the detailed audit and [product notes](docs/product.md) for decisions and scope.
+
+## Run locally
+
+Requires **Node.js 24** and npm.
+
+```sh
+nvm use
+npm ci
+npm run dev
+```
+
+Open the URL printed by Vite. No account, API keys, or backend are required.
+
+| Command               | Purpose                                           |
+| --------------------- | ------------------------------------------------- |
+| `npm run dev`         | Development server                                |
+| `npm run check`       | Formatting, lint, types, and unit/component tests |
+| `npm run build`       | Production build                                  |
+| `npm run preview`     | Preview built assets                              |
+| `npm run test:e2e`    | Playwright browser tests                          |
+| `npm run build:logos` | Regenerate standalone SVG brand assets            |
+
+Before running browser tests, install Chromium with `npx playwright install chromium` (or `--with-deps chromium` on Linux). The browser suite runs against a production preview at `127.0.0.1:4173`.
+
+The engine can also be used directly:
 
 ```ts
 import { createRouter } from './src/engine';
@@ -54,130 +75,21 @@ const rules = createClassicTraveller1981Rules(
   },
   { initialFuelTons: 13 },
 );
+
 const router = createRouter(EMBER_REACH, rules);
-const route = router.findRoute('aster', 'cinder'); // defaults to 'lowest-fuel-cost'
-const fewerJumps = router.findRoute('aster', 'cinder', 'fewest-jumps');
+const cheapest = router.findRoute('aster', 'cinder', 'lowest-fuel-cost');
+const shortest = router.findRoute('aster', 'cinder', 'fewest-jumps');
 ```
-
-The optional third argument is a `RoutingPreference`: `'lowest-fuel-cost'`
-orders purchased credits, jumps, then total parsecs; `'fewest-jumps'` orders jumps,
-purchased credits, then total parsecs. Both finally compare the sequence of
-`(next system ID, departure fuel)` pairs in ascending order. Changing preference
-needs no new rules or router. Results always report actual totals and events.
-Fewest jumps is not a total travel-time estimate: transit, refueling, preparation,
-delays and maintenance are not modeled.
-
-Specifications and starting state are validated and snapshotted. Create new rules
-and a router when either changes. Displacement supports 100–5000 tons in 10-ton
-increments, Jump-1–6, whole-ton jump-fuel capacity from 1 to displacement, and
-starting jump fuel from zero to capacity. Invalid or fractional inputs throw;
-no values are rounded. These are routing inputs, not complete CT ship-design
-validation. Jump fuel excludes power-plant fuel. Gas-giant access requires both
-scoops and streamlining.
-See [the rules document](docs/rules.md#routing-implementation) for exact fuel
-states, optimization, performance bounds, and operational limitations.
-
-## Development
-
-Use **Node 24** and npm. With nvm installed:
-
-```sh
-nvm use
-npm ci
-npm run dev
-```
-
-Open the local URL printed by Vite. No accounts, environment variables, or backend
-services are required.
-
-| Command               | Purpose                                                      |
-| --------------------- | ------------------------------------------------------------ |
-| `npm run dev`         | Start the development server                                 |
-| `npm run check`       | Check formatting, lint, TypeScript, and unit/component tests |
-| `npm run test:watch`  | Watch unit/component tests                                   |
-| `npm run format`      | Apply formatting                                             |
-| `npm run build`       | Type-check and build static assets into `dist/`              |
-| `npm run build:logos` | Export full and compact SVG identities from shared geometry  |
-| `npm run preview`     | Serve the production build locally                           |
-| `npm run test:e2e`    | Build and run the Chromium journey tests                     |
-
-Before the first browser test, install Chromium:
-
-```sh
-npx playwright install chromium
-```
-
-On Linux, use `npx playwright install --with-deps chromium` to also install system
-dependencies. Playwright starts a production preview on `127.0.0.1:4173`; keep
-that port free. CI installs those browser dependencies and runs all checks,
-the production build, and the journey tests.
 
 ## Project notes
 
-- [Product requirements and scope](docs/product.md)
-- [Rules references and open questions](docs/rules.md)
-- [Coding guide](AGENTS.md)
+- [Product scope and UI decisions](docs/product.md)
+- [Classic Traveller rules audit and routing implementation](docs/rules.md)
+- [Contributing and coding conventions](AGENTS.md)
 
-The logo's hand-drawn SVG geometry lives in
-`src/components/JumpwakeLogo/JumpwakeLogo.tsx`. After changing it, run
-`npm run build:logos` and commit the regenerated standalone assets in
-`public/brand/`. The exports use fixed palette colors and outlined lettering;
-they need no fonts, stylesheets, or external resources. The full identity uses
-mirrored Art Deco wings in the letterhead; the sticky navigation uses the compact
-framed monogram. The ivory badge background is intentionally opaque. Run
-`npm run test:e2e -- e2e/logo.spec.ts e2e/deco.spec.ts` to regenerate standalone
-logo and application previews in ignored `test-results/` directories.
+## License and acknowledgements
 
-## Licensing status
+The original Jumpwake source code and artwork are released under the [MIT License](LICENSE). This license does **not** grant rights to Traveller trademarks, publications, or third-party sector data.
 
-The project is intended to become open source. A code license has not yet been
-selected, so no open-source license grant is made by this scaffold.
-`UNLICENSED` records that pending decision; `private: true` prevents accidental
-npm publication. Rules-reference and attribution questions are tracked in the
-rules document and must be resolved before distributing rules-derived content.
+Jumpwake is an unofficial fan project. See [third-party notices](THIRD_PARTY_NOTICES.md) for attribution.
 
-## Local navigation charts
-
-Open **Chart bureau** to load a UTF-8 **Traveller Map T5 Tab Delimited** file.
-Obtain compatible data using Traveller Map's documented
-[`/data/{sector}/{subsector}/tab` or `/data/{sector}/tab` endpoints](https://travellermap.com/doc/api),
-or author a tab-separated file following the [format specification](https://travellermap.com/doc/fileformats).
-Jumpwake itself makes no requests to Traveller Map and uploads no file contents.
-Imported charts last for this session; refresh requires importing again. Applied
-vessel persistence is unchanged. Return to Ember Reach from the bureau at any time.
-
-Required case-sensitive headers are `Hex`, `Name`, `UWP`, and `PBG`, in any order.
-Additional fields and source comments are retained for inspection. Blank lines and
-lines beginning with `#` are ignored. LF, CRLF and a UTF-8 BOM are supported.
-Names remain complete and need not be unique; coordinates must be unique.
-UWP must provide a known A–E/X starport and valid eHex profile; PBG must provide
-a population digit and known eHex belt and gas-giant counts. Unknown fuel data is
-rejected rather than interpreted as no fuel. All validation errors prevent loading;
-the previous chart remains active. Limits: 2 MiB, 10,000 lines, 1,280 world records.
-
-`Hex` is the original sector address, columns 01–32 and rows 01–40. Subsector
-letters run A–D across the first ten rows, E–H across the next ten, through M–P.
-Only represented subsectors appear in the selector, including sparse charts.
-Each is normalized to local columns 01–08 and rows 01–10; inspection shows both
-addresses. Routing stays inside the selected chart. Switching charts clears the
-passage and inspection, preserving the vessel and routing preference.
-
-The UWP starport and PBG gas-giant count supply facilities to the existing CT 1981
-rules, including ship-dependent scooping and existing fuel prices. T5 is a data
-interchange format here, not a rules-edition change. Remarks, zones and other
-metadata do not introduce additional operational restrictions or fuel sources.
-Imported worlds receive no invented descriptions. Source comments are available
-in the bureau; supplied columns are available in world inspection.
-
-Labels are packed deterministically around measured text, world markers and route
-curves, prioritizing endpoints and route worlds. Labels without clear space are
-shown as names alone when that fits, or omitted at rest and revealed on hover, focus or inspection without moving the
-resting layout. Every marker retains its full accessible name and tooltip. Inspect
-a marker or use the address-qualified endpoint selectors to find a world.
-Legacy fixed-width SEC and T5 column-delimited files, cross-subsector routing,
-metadata XML, and durable imported-map storage remain unsupported.
-
-For optional real-data browser verification, set `JUMPWAKE_TEST_CHART` to a local
-T5 tab subsector file and run `npm run test:e2e -- e2e/chart-labels.spec.ts`.
-The same collision and keyboard checks run against synthetic 3-, 24-, and 80-world
-charts without that variable. Keep downloaded source datasets outside the repository.
