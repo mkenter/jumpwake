@@ -5,12 +5,13 @@ import { JumpwakeLogo } from '../../JumpwakeLogo';
 import styles from './Masthead.module.css';
 
 type MastheadProps = {
+  title: string;
   compact: boolean;
   view: 'chart' | 'manifest';
   onNavigate: (destination: 'passage' | 'chart' | 'manifest') => void;
 };
 
-export function Masthead({ compact, view, onNavigate }: MastheadProps) {
+export function Masthead({ title, compact, view, onNavigate }: MastheadProps) {
   const [condensed, setCondensed] = useState(false);
   const ceremonyRef = useRef<HTMLElement>(null);
   const homeRef = useRef<HTMLAnchorElement>(null);
@@ -126,7 +127,7 @@ export function Masthead({ compact, view, onNavigate }: MastheadProps) {
           </button>
         </motion.div>
         <span className={styles.edition} aria-hidden={condensed}>
-          Ember Reach <span>Chart Nº 001</span>
+          {title} <span>Navigation chart</span>
         </span>
       </motion.nav>
     </>

@@ -1,12 +1,24 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { motion, useReducedMotion } from 'motion/react';
-import { address, hexes, point, worlds, type Stop } from '../presentation';
+import {
+  address,
+  hexes,
+  point,
+  type PresentedWorld,
+  type Stop,
+} from '../presentation';
 import { routeLegs } from './routeGeometry';
-import { placeWorldLabels, type LabelMetrics } from './labelLayout';
+import {
+  placeWorldLabels,
+  revealWorldLabels,
+  type LabelMetrics,
+} from './labelLayout';
 import styles from './PassageChart.module.css';
 
 type Props = {
+  worlds: readonly PresentedWorld[];
+  title: string;
   stops: Stop[];
   visible: boolean;
   selected: string | null;
@@ -18,6 +30,8 @@ type Props = {
 };
 
 export function PassageChart({
+  worlds,
+  title,
   stops,
   visible,
   selected,
@@ -39,8 +53,9 @@ export function PassageChart({
   }, []);
   const markerRadius = largeMarkers ? 11 : 7;
   const legs = useMemo(
-    () => routeLegs(stops, markerRadius),
-    [stops, markerRadius],
+    () =>
+      routeLegs(stops, (id) => worlds.find((w) => w.id === id)!, markerRadius),
+    [stops, markerRadius, worlds],
   );
   const svgRef = useRef<SVGSVGElement>(null);
   const [metrics, setMetrics] = useState<Record<string, LabelMetrics>>({});
@@ -58,16 +73,21 @@ export function PassageChart({
         width: Math.max(a.width, b.width),
         top: a.y,
         bottom: b.y + b.height,
+        nameBottom: a.y + a.height,
+        nameWidth: a.width,
       };
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Measure SVG glyphs before paint so label placement does not visibly jump.
     setMetrics(measured);
-  }, [largeMarkers, origin, destination, visible]);
+  }, [largeMarkers, origin, destination, visible, worlds]);
   const labels = useMemo(
     () =>
       placeWorldLabels(
         worlds.map((world) => ({
           id: world.id,
+          markerRadius: stops.some((stop) => stop.world === world.id)
+            ? markerRadius
+            : 3.5,
           ...point(world),
           ...(metrics[world.id] ?? {
             width: Math.max(
@@ -80,8 +100,22 @@ export function PassageChart({
         })),
         legs,
         markerRadius,
+        [origin, destination],
       ),
-    [metrics, legs, markerRadius, largeMarkers],
+    [
+      metrics,
+      legs,
+      markerRadius,
+      largeMarkers,
+      worlds,
+      origin,
+      destination,
+      stops,
+    ],
+  );
+  const shownLabels = revealWorldLabels(
+    labels,
+    [highlight, selected].filter((id): id is string => Boolean(id)),
   );
   return (
     <svg
@@ -89,7 +123,7 @@ export function PassageChart({
       className={styles.chart}
       viewBox="-22 -18 650 800"
       role="group"
-      aria-label="Ember Reach subsector. Select a world to inspect; use its details to change endpoints."
+      aria-label={`${title} subsector. Select a world to inspect; use its details to change endpoints.`}
     >
       <g className={styles.grid} aria-hidden="true">
         {hexes.map((hex) => (
@@ -140,7 +174,12 @@ export function PassageChart({
       )}
       {worlds.map((world) => {
         const p = point(world);
-        const label = labels.get(world.id) ?? { x: p.x + 15, y: p.y - 11 };
+        const label = shownLabels.get(world.id) ?? {
+          x: p.x + 15,
+          y: p.y - 11,
+          visible: false,
+          compact: false,
+        };
         const index = stops.findIndex((stop) => stop.world === world.id);
         const endpoint =
           world.id === origin
@@ -181,10 +220,10 @@ export function PassageChart({
             </title>
             <rect
               className={styles.hit}
-              x={p.x - 42}
-              y={p.y - 42}
-              width="84"
-              height="84"
+              x={p.x - (worlds.length > 15 ? 24 : 42)}
+              y={p.y - (worlds.length > 15 ? 24 : 42)}
+              width={worlds.length > 15 ? 48 : 84}
+              height={worlds.length > 15 ? 48 : 84}
               rx="22"
             />
             <circle className={styles.halo} cx={p.x} cy={p.y} r="22" />
@@ -195,13 +234,20 @@ export function PassageChart({
               r={index >= 0 ? markerRadius : 3.5}
             />
             <g
+              pointerEvents="none"
+              visibility={label.visible ? 'visible' : 'hidden'}
               data-world-label={world.id}
               transform={`translate(${label.x} ${label.y})`}
             >
               <text data-label-name className={styles.name} x="0" y="0">
-                {world.name.split(' ')[0]}
+                {world.sourceHex
+                  ? world.name.length > 12
+                    ? `${world.name.slice(0, 11)}…`
+                    : world.name
+                  : world.name.split(' ')[0]}
               </text>
               <text
+                visibility={label.compact ? 'hidden' : undefined}
                 data-label-code
                 className={styles.code}
                 x="0"
