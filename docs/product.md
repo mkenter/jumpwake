@@ -7,7 +7,7 @@ at the table.
 ## v0.1 target
 
 - Classic Traveller 1981 Books 2 and 3 as the primary rules target; see [rules.md](rules.md) for verification status.
-- One 8 × 10 subsector containing authored, fictional star systems.
+- One active 8 × 10 chart: the fictional Ember Reach demo or a locally imported T5 tab subsector.
 - A default 200-ton Jump-3 ship with scoops, streamlining, and 60 tons allocated
   to jump fuel, initially full. Vessel Particulars supports validated ship
   specifications and partial starting fuel through the same programmatic API.
@@ -134,4 +134,18 @@ explorations remain on their branches.
 
 Procedural world generation, ship builders, alternate rulesets, multi-subsector
 travel, trading and cargo simulation, campaign management, accounts, cloud saves,
-collaboration, backend APIs, deployment, offline installation, and data import/export.
+collaboration, backend APIs, deployment, offline installation, and data export.
+
+## Local chart import
+
+The collapsible Chart bureau loads validated local T5 Tab Delimited data without
+uploads or persistence. A sector becomes selectable aligned A–P subsectors, each
+with local and original addresses. Switching clears endpoints and passage state
+while retaining vessel particulars and preference. Invalid files leave the active
+chart unchanged; no partial imports are accepted. The active chart explicitly
+supplies the router, SVG, selectors, manifest and inspection. Imported metadata
+is displayed as supplied; fuel eligibility remains governed by CT 1981 rules.
+See the [README](../README.md#local-navigation-charts) for format, validation and
+coordinate details. Charts deterministically pack labels into clear space, giving endpoints and route
+worlds priority. Hover, focus and inspection reveal omitted labels while retaining
+all inspection targets and full accessible world names.

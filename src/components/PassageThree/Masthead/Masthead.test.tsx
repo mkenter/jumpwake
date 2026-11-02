@@ -23,7 +23,14 @@ describe('Masthead', () => {
   it('exposes one home link and delegates the three supported destinations', async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();
-    render(<Masthead compact view="chart" onNavigate={onNavigate} />);
+    render(
+      <Masthead
+        title="Ember Reach"
+        compact
+        view="chart"
+        onNavigate={onNavigate}
+      />,
+    );
     expect(screen.getAllByRole('link', { name: 'Jumpwake home' })).toHaveLength(
       1,
     );
@@ -44,7 +51,12 @@ describe('Masthead', () => {
   it('reflects the mobile view without declaring desktop panels mutually exclusive', () => {
     const onNavigate = vi.fn();
     const { rerender } = render(
-      <Masthead compact view="manifest" onNavigate={onNavigate} />,
+      <Masthead
+        title="Ember Reach"
+        compact
+        view="manifest"
+        onNavigate={onNavigate}
+      />,
     );
     expect(screen.getByRole('button', { name: 'Manifest' })).toHaveAttribute(
       'aria-pressed',
@@ -55,7 +67,12 @@ describe('Masthead', () => {
       'false',
     );
     rerender(
-      <Masthead compact={false} view="manifest" onNavigate={onNavigate} />,
+      <Masthead
+        title="Ember Reach"
+        compact={false}
+        view="manifest"
+        onNavigate={onNavigate}
+      />,
     );
     expect(
       screen.queryByRole('group', { name: 'Planner view' }),

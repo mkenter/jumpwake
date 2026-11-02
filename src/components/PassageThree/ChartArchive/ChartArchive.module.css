@@ -1,0 +1,27 @@
+.archive {
+  margin: 1.5rem clamp(1rem, 4vw, 4rem);
+  padding: 1rem;
+  border-block: 1px solid #b19b70;
+  color: #354248;
+  overflow-wrap: anywhere;
+}
+.archive summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.archive label {
+  display: block;
+  margin-block: 1rem;
+}
+.archive input,
+.archive select {
+  max-width: 100%;
+  margin: 0.5rem;
+}
+.archive button {
+  margin-block: 0.5rem;
+}
+.archive ul {
+  max-height: 16rem;
+  overflow: auto;
+}

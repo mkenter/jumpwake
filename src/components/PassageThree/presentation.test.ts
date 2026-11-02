@@ -2,7 +2,12 @@ import { classicTraveller1981 } from '../../rules/classicTraveller1981';
 import { describe, expect, it } from 'vitest';
 import { createRouter } from '../../engine';
 import { EMBER_REACH } from '../../data/emberReach';
-import { hexes, point, routeStops, worlds } from './presentation';
+import {
+  hexes,
+  point,
+  routeStops as formatStops,
+  presentWorlds,
+} from './presentation';
 const router = createRouter(EMBER_REACH, classicTraveller1981);
 describe('calculated passage presentation', () => {
   it('keeps purchase, scoop and return visits in chronological order', () => {
@@ -103,3 +108,8 @@ describe('calculated passage presentation', () => {
     }
   });
 });
+
+const worlds = presentWorlds(EMBER_REACH);
+const worldById = (id: string) => worlds.find((w) => w.id === id)!;
+const routeStops = (result: Parameters<typeof formatStops>[0]) =>
+  formatStops(result, worldById);

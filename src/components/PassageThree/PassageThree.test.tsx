@@ -1,4 +1,11 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PassageThree } from './PassageThree';
@@ -352,4 +359,37 @@ describe('passage preferences', () => {
     );
     expect(screen.queryByRole('radio')).not.toBeInTheDocument();
   });
+});
+
+describe('deferred chart navigation focus', () => {
+  it.each(['{Enter}', ' '])(
+    'preserves newer world focus and opens inspection with %s',
+    async (key) => {
+      const user = userEvent.setup();
+      render(<PassageThree />);
+      const frames: FrameRequestCallback[] = [];
+      vi.stubGlobal(
+        'requestAnimationFrame',
+        (callback: FrameRequestCallback) => {
+          frames.push(callback);
+          return frames.length;
+        },
+      );
+      const chart = screen.getByRole('button', { name: 'Chart' });
+      chart.focus();
+      fireEvent.click(chart);
+      const world = screen.getByRole('button', {
+        name: 'Inspect Echo Basin, 0205',
+      });
+      act(() => world.focus());
+      // Force navigation's deferred callback to run after the user has moved on.
+      act(() => frames.splice(0).forEach((callback) => callback(0)));
+      expect(world).toHaveFocus();
+      await user.keyboard(key);
+      expect(
+        screen.getByRole('complementary', { name: 'World inspection' }),
+      ).toBeVisible();
+      expect(screen.getByRole('heading', { name: /Echo Basin/ })).toHaveFocus();
+    },
+  );
 });

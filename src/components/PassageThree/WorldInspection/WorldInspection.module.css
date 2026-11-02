@@ -126,3 +126,8 @@
 :global(body):has(.sheet[open]) {
   overflow: hidden;
 }
+
+.inspector,
+.sheet {
+  overflow-wrap: anywhere;
+}
