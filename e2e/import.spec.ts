@@ -128,7 +128,7 @@ test('imported ship eligibility, comparison, manifest, unreachable and touch ins
   await page.getByLabel('Fuel scoops fitted').uncheck();
   await page.getByRole('button', { name: 'Apply particulars' }).click();
   await expect(page.getByRole('status').first()).toContainText('Cr6,000');
-  await page.locator('[data-world="hex-0202"]').click();
+  await page.locator('[data-world="hex-0202"] rect').click();
   await expect(page.getByText('No local fuel')).toBeVisible();
   await page.getByRole('button', { name: 'Close world details' }).click();
   await page
@@ -139,7 +139,8 @@ test('imported ship eligibility, comparison, manifest, unreachable and touch ins
   ).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Chart', exact: true }).click();
-  await page.locator('[data-world="hex-0202"]').tap();
+  // The group bounds include offset, noninteractive labels; tap the world hit area.
+  await page.locator('[data-world="hex-0202"] rect').tap();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('button', { name: 'Set destination' }).click();
   await expect(
