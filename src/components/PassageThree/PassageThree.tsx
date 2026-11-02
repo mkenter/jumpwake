@@ -479,6 +479,7 @@ export function PassageThree() {
           {state.initialFuelTons} T INITIAL JUMP FUEL
         </span>
         <span>Fuel grades simplified · no arrival reserve</span>
+        <a href="/legal.html">Legal &amp; attribution</a>
       </footer>
       <p className={styles.sr} aria-live="polite">
         {inspection

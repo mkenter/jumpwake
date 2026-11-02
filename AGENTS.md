@@ -1,7 +1,6 @@
 # Coding guide
 
-Read `README.md` for setup and current capabilities, `docs/product.md` for scope
-and functional decisions, and `docs/rules.md` for rules references and open questions.
+Read `README.md` for setup and current capabilities.
 
 ## Code conventions
 

@@ -1,0 +1,34 @@
+:root {
+  color-scheme: light;
+}
+
+body {
+  max-width: 680px;
+  margin: 6vh auto;
+  padding: 0 24px 48px;
+  background: #f5f1ef;
+  color: #354248;
+  font-family: system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+h1 {
+  font-family: Georgia, serif;
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h2 {
+  margin-top: 2rem;
+  font-family: Georgia, serif;
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+a {
+  color: #75566b;
+  text-underline-offset: 3px;
+}

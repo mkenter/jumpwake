@@ -74,7 +74,7 @@ export function validateShip(
     throw new TypeError('Scoops and streamlining must be booleans');
 }
 
-/** CT81 availability with provisional A/B unrefined sales; see docs/rules.md. */
+/** CT81 availability with provisional A/B unrefined sales */
 export function createClassicTraveller1981Rules(
   ship: ShipSpecifications,
   state: ShipOperatingState,
