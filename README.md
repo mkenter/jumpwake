@@ -1,6 +1,6 @@
 # Jumpwake
 
-<img src="public/brand/jumpwake-full.svg" alt="Jumpwake Navigation Service" width="420">
+<img src="public/brand/jumpwake-full.svg" alt="Jumpwake Navigation Service" width="420" />
 
 **Work in progress · v0.1.0**
 
@@ -91,4 +91,3 @@ const shortest = router.findRoute('aster', 'cinder', 'fewest-jumps');
 The original Jumpwake source code and artwork are released under the [MIT License](LICENSE). This license does **not** grant rights to Traveller trademarks, publications, or third-party sector data.
 
 Jumpwake is an unofficial fan project. See [third-party notices](THIRD_PARTY_NOTICES.md) for attribution.
-
