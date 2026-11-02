@@ -33,7 +33,7 @@ The route planner models fuel aboard as part of the search state, so a cheaper j
 
 The implementation includes unit tests, an independent routing-correctness review, and Playwright tests covering imports, routes, keyboard and touch interaction, and different screen sizes.
 
-**Current boundaries:** planning is limited to one active subsector. Fuel risk, power-plant fuel, travel time, full ship construction, and some wilderness refueling options are not modeled. See [rules and assumptions](docs/rules.md) for the detailed audit and [product notes](docs/product.md) for decisions and scope.
+**Current boundaries:** planning is limited to one active subsector. Fuel risk, power-plant fuel, travel time, full ship construction, and some wilderness refueling options are not modeled. See [rules and assumptions](docs/rules.md) for the detailed audit.
 
 ## Run locally
 
@@ -83,7 +83,6 @@ const shortest = router.findRoute('aster', 'cinder', 'fewest-jumps');
 
 ## Project notes
 
-- [Product scope and UI decisions](docs/product.md)
 - [Classic Traveller rules audit and routing implementation](docs/rules.md)
 - [Contributing and coding conventions](AGENTS.md)
 
