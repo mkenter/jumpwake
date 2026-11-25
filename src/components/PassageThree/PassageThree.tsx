@@ -20,10 +20,30 @@ import { Masthead } from './Masthead';
 import styles from './PassageThree.module.css';
 import { VesselParticulars } from './VesselParticulars';
 import { restoreVessel, saveVessel, type Vessel } from './vessel';
-import { restoreChart } from './chartStorage';
+import { restoreChart, type ImportedChart } from './chartStorage';
+import {
+  chartDigest,
+  decodePassage,
+  encodePassage,
+  passageMatchesChart,
+  type PassageLink,
+} from './passageLink';
 
 export function PassageThree() {
   const [restored] = useState(restoreChart);
+  const [imported, setImported] = useState<ImportedChart | null>(restored);
+  const [link] = useState(() => {
+    const values = new URLSearchParams(window.location.search).getAll(
+      'passage',
+    );
+    return values.length === 1 ? decodePassage(values[0]!) : null;
+  });
+  const [linkPending, setLinkPending] = useState(Boolean(link));
+  const [linkMessage, setLinkMessage] = useState(() =>
+    !link && new URLSearchParams(window.location.search).has('passage')
+      ? 'This passage link is invalid or unsupported.'
+      : '',
+  );
   const [chart, setChart] = useState(
     () =>
       restored?.charts.find((item) => item.position === restored.selected) ??
@@ -63,6 +83,64 @@ export function PassageThree() {
     query.addEventListener('change', update);
     return () => query.removeEventListener('change', update);
   }, []);
+
+  useEffect(() => {
+    if (!linkPending || !link) return;
+    let cancelled = false;
+    async function restore() {
+      let target = demoChart;
+      if (link!.chart.kind === 'import') {
+        const required = link!.chart;
+        if (
+          !imported ||
+          (await chartDigest(imported.text)) !== required.digest
+        ) {
+          if (!cancelled)
+            setLinkMessage(
+              `Import the matching T5 file for ${required.hint}, subsector ${required.position}, to restore this passage.`,
+            );
+          return;
+        }
+        const match = imported.charts.find(
+          (item) => item.position === required.position,
+        );
+        if (!match) {
+          if (!cancelled)
+            setLinkMessage(
+              'The required subsector was not found in this chart.',
+            );
+          return;
+        }
+        target = match;
+      }
+      if (cancelled) return;
+      if (!passageMatchesChart(link!, target)) {
+        setLinkMessage(
+          'The shared passage could not be verified on this chart.',
+        );
+        setLinkPending(false);
+        return;
+      }
+      setChart(target);
+      setVessel(link!.vessel);
+      setOrigin(link!.origin);
+      setDestination(link!.destination);
+      setPreference(link!.preference);
+      setLinkMessage(
+        'Shared passage restored. Your saved vessel settings were not changed.',
+      );
+      setLinkPending(false);
+    }
+    restore().catch(() => {
+      if (!cancelled) {
+        setLinkMessage('Unable to verify this passage link.');
+        setLinkPending(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [link, linkPending, imported]);
 
   const alternatives = useMemo(
     () =>
@@ -217,8 +295,24 @@ export function PassageThree() {
         <ChartArchive
           chart={chart}
           onSelect={selectChart}
-          initialImport={restored}
+          imported={imported}
+          onImport={setImported}
+          pending={linkPending && link?.chart.kind === 'import'}
         />
+        {linkMessage && <p role="status">{linkMessage}</p>}
+        {linkPending && link?.chart.kind === 'import' && (
+          <button
+            onClick={() => {
+              setLinkPending(false);
+              setLinkMessage('');
+              const url = new URL(window.location.href);
+              url.searchParams.delete('passage');
+              window.history.replaceState(window.history.state, '', url);
+            }}
+          >
+            Dismiss shared passage
+          </button>
+        )}
         <section
           id="journey-controls"
           className={styles.journeyControls}
@@ -297,6 +391,23 @@ export function PassageThree() {
               status
             )}
           </p>
+          {passage && (
+            <CopyPassageLink
+              key={JSON.stringify([
+                chart,
+                vessel,
+                origin,
+                destination,
+                preference,
+              ])}
+              chart={chart}
+              imported={imported}
+              vessel={vessel}
+              origin={origin}
+              destination={destination}
+              preference={preference}
+            />
+          )}
           {alternatives?.['lowest-fuel-cost'].status === 'reachable' &&
             alternatives['fewest-jumps'].status === 'reachable' && (
               <PassageComparison
@@ -517,6 +628,69 @@ export function PassageThree() {
           ? `Inspecting ${worldById(inspection.id).name}, ${address(worldById(inspection.id))}. Passage unchanged.`
           : ''}
       </p>
+    </div>
+  );
+}
+
+function CopyPassageLink({
+  chart,
+  imported,
+  vessel,
+  origin,
+  destination,
+  preference,
+}: {
+  chart: Subsector;
+  imported: ImportedChart | null;
+  vessel: Vessel;
+  origin: string;
+  destination: string;
+  preference: RoutingPreference;
+}) {
+  const [message, setMessage] = useState('');
+  async function copy() {
+    try {
+      const identity: PassageLink['chart'] =
+        chart === demoChart
+          ? { kind: 'demo' }
+          : {
+              kind: 'import',
+              digest: await chartDigest(imported!.text),
+              position: chart.position!,
+              hint: imported!.source.slice(0, 120),
+            };
+      const payload = encodePassage({
+        version: 1,
+        chart: identity,
+        vessel,
+        origin,
+        destination,
+        preference,
+      });
+      if (payload.length > 2048 || !navigator.clipboard?.writeText)
+        throw new Error('Unavailable');
+      const url = new URL(window.location.href);
+      url.search = '';
+      url.hash = '';
+      url.searchParams.set('passage', payload);
+      await navigator.clipboard.writeText(url.toString());
+      setMessage(
+        chart === demoChart
+          ? 'Passage link copied.'
+          : 'Passage link copied. Recipients need the same imported chart data on their device.',
+      );
+    } catch {
+      setMessage(
+        'Could not copy passage link. Clipboard access is unavailable.',
+      );
+    }
+  }
+  return (
+    <div className={styles.copyControl}>
+      <button type="button" className={styles.sampleLink} onClick={copy}>
+        Copy passage link
+      </button>
+      <span aria-live="polite">{message}</span>
     </div>
   );
 }

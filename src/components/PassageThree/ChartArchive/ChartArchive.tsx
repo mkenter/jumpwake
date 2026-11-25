@@ -10,20 +10,23 @@ import styles from './ChartArchive.module.css';
 export function ChartArchive({
   chart,
   onSelect,
-  initialImport,
+  imported,
+  onImport,
+  pending,
 }: {
   chart: Subsector;
   onSelect: (chart: Subsector) => void;
-  initialImport: ImportedChart | null;
+  imported: ImportedChart | null;
+  onImport: (chart: ImportedChart | null) => void;
+  pending: boolean;
 }) {
-  const [imported, setImported] = useState(initialImport);
   const [storageWarning, setStorageWarning] = useState(false);
   const charts = imported?.charts ?? [];
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const request = useRef(0);
   return (
-    <details className={styles.archive}>
+    <details className={styles.archive} open={pending || undefined}>
       <summary>
         Chart bureau · {chart.title} · {chart.worlds.length} worlds ·{' '}
         {chart === demoChart ? 'Demonstration' : 'Imported'}
@@ -63,7 +66,7 @@ export function ChartArchive({
                   selected: result.charts[0]!.position!,
                   charts: result.charts,
                 };
-                setImported(next);
+                onImport(next);
                 setStorageWarning(!saveChart(next));
                 onSelect(result.charts[0]!);
               }
@@ -107,7 +110,7 @@ export function ChartArchive({
             value={charts.includes(chart) ? chart.position : ''}
             onChange={(event) => {
               const next = { ...imported!, selected: event.target.value };
-              setImported(next);
+              onImport(next);
               setStorageWarning(!saveChart(next));
               onSelect(charts.find((c) => c.position === event.target.value)!);
             }}
@@ -127,7 +130,7 @@ export function ChartArchive({
         <button
           onClick={() => {
             ++request.current;
-            setImported(null);
+            onImport(null);
             setErrors([]);
             setStorageWarning(!forgetChart());
             onSelect(demoChart);
