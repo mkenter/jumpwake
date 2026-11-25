@@ -14,6 +14,15 @@ test('shares bundled and imported passages across independent contexts', async (
   await page.getByLabel('Destination').selectOption('cinder');
   await page.getByRole('radio', { name: /^Fewest jumps/ }).check();
   await page.getByRole('button', { name: 'Copy passage link' }).click();
+  await expect(
+    page.getByText('Passage link copied.', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('radio', { name: /^Lowest/ }).check();
+  await expect(
+    page.getByText('Passage link copied.', { exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole('radio', { name: /^Fewest jumps/ }).check();
+  await page.getByRole('button', { name: 'Copy passage link' }).click();
   const bundled = await page.evaluate(() =>
     (
       navigator as unknown as { clipboard: { readText(): Promise<string> } }
@@ -62,6 +71,11 @@ test('shares bundled and imported passages across independent contexts', async (
   await page.getByLabel('Origin').selectOption('hex-0101');
   await page.getByLabel('Destination').selectOption('hex-0102');
   await page.getByRole('button', { name: 'Copy passage link' }).click();
+  await expect(
+    page.getByText('Recipients need the same imported chart data', {
+      exact: false,
+    }),
+  ).toBeVisible();
   const imported = await page.evaluate(() =>
     (
       navigator as unknown as { clipboard: { readText(): Promise<string> } }
@@ -71,6 +85,15 @@ test('shares bundled and imported passages across independent contexts', async (
   await expect(
     other.getByText('Import the matching T5 file', { exact: false }),
   ).toBeVisible();
+  await other.getByRole('button', { name: 'Dismiss shared passage' }).click();
+  await expect(
+    other.getByRole('button', { name: 'Dismiss shared passage' }),
+  ).toHaveCount(0);
+  await other.reload();
+  await expect(
+    other.getByText('Import the matching T5 file', { exact: false }),
+  ).toHaveCount(0);
+  await other.goto(imported);
   const input = other.getByLabel('Load navigation chart');
   await input.setInputFiles({
     name: 'wrong.tab',
@@ -89,5 +112,11 @@ test('shares bundled and imported passages across independent contexts', async (
   await expect(other.getByLabel('Destination')).toHaveValue('hex-0102');
   await other.reload();
   await expect(other.getByLabel('Destination')).toHaveValue('hex-0102');
+  await other.getByText('Chart bureau ·').click();
+  await other.getByRole('button', { name: 'Forget imported chart' }).click();
+  await other.goto(imported);
+  await expect(
+    other.getByText('Import the matching T5 file', { exact: false }),
+  ).toBeVisible();
   await recipient.close();
 });

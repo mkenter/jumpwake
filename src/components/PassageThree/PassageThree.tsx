@@ -295,11 +295,24 @@ export function PassageThree() {
         <ChartArchive
           chart={chart}
           onSelect={selectChart}
-          initialImport={restored}
+          imported={imported}
           onImport={setImported}
           pending={linkPending && link?.chart.kind === 'import'}
         />
         {linkMessage && <p role="status">{linkMessage}</p>}
+        {linkPending && link?.chart.kind === 'import' && (
+          <button
+            onClick={() => {
+              setLinkPending(false);
+              setLinkMessage('');
+              const url = new URL(window.location.href);
+              url.searchParams.delete('passage');
+              window.history.replaceState(window.history.state, '', url);
+            }}
+          >
+            Dismiss shared passage
+          </button>
+        )}
         <section
           id="journey-controls"
           className={styles.journeyControls}
@@ -380,6 +393,13 @@ export function PassageThree() {
           </p>
           {passage && (
             <CopyPassageLink
+              key={JSON.stringify([
+                chart,
+                vessel,
+                origin,
+                destination,
+                preference,
+              ])}
               chart={chart}
               imported={imported}
               vessel={vessel}
@@ -655,7 +675,9 @@ function CopyPassageLink({
       url.searchParams.set('passage', payload);
       await navigator.clipboard.writeText(url.toString());
       setMessage(
-        'Passage link copied. Recipients need the same imported chart data on their device.',
+        chart === demoChart
+          ? 'Passage link copied.'
+          : 'Passage link copied. Recipients need the same imported chart data on their device.',
       );
     } catch {
       setMessage(
