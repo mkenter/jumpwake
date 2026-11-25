@@ -393,3 +393,49 @@ describe('deferred chart navigation focus', () => {
     },
   );
 });
+
+describe('copy passage', () => {
+  it('copies the selected manifest and updates it when the preference changes', async () => {
+    const { user } = await passage();
+    const writeText = vi
+      .spyOn(navigator.clipboard, 'writeText')
+      .mockResolvedValue();
+    await user.click(screen.getByRole('button', { name: 'Copy passage' }));
+    const first = writeText.mock.calls[0]![0];
+    expect(first).toContain('Source: Original fictional demonstration');
+    expect(first).toContain('Routing: Lowest fuel cost');
+    expect(first).toContain('Starting jump fuel:');
+    expect(first).toContain('## Events');
+    expect(first).toContain('1. **Aster Quay**');
+    expect(screen.getByText('Passage copied to clipboard.')).toBeVisible();
+    await user.click(screen.getByRole('radio', { name: /^Fewest jumps/ }));
+    await user.click(screen.getByRole('button', { name: 'Copy passage' }));
+    expect(writeText.mock.calls[1]![0]).toContain('Routing: Fewest jumps');
+    expect(writeText.mock.calls[1]![0]).not.toEqual(first);
+  });
+
+  it('hides the action for missing and unreachable endpoints', async () => {
+    const user = userEvent.setup();
+    render(<PassageThree />);
+    expect(screen.queryByRole('button', { name: 'Copy passage' })).toBeNull();
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Origin' }),
+      'aster',
+    );
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Destination' }),
+      'last',
+    );
+    expect(screen.queryByRole('button', { name: 'Copy passage' })).toBeNull();
+  });
+
+  it('reports clipboard denial without removing the passage', async () => {
+    const { user, manifest } = await passage();
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(
+      new Error('denied'),
+    );
+    await user.click(screen.getByRole('button', { name: 'Copy passage' }));
+    expect(screen.getByText(/Could not copy passage/)).toBeVisible();
+    expect(within(manifest).getAllByRole('listitem').length).toBeGreaterThan(0);
+  });
+});

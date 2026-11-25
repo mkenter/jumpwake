@@ -103,7 +103,8 @@ export function PassageThree() {
     const lines = [
       `# Passage: ${escape(worldById(origin).name)} to ${escape(worldById(destination).name)}`,
       '',
-      `- Chart/source: ${escape(chart.title)}`,
+      `- Chart: ${escape(chart.title)}`,
+      `- Source: ${escape(chart.source)}`,
       `- Origin: ${escape(worldById(origin).name)} (${address(worldById(origin))})`,
       `- Destination: ${escape(worldById(destination).name)} (${address(worldById(destination))})`,
       `- Routing: ${preferenceNames[preference]}`,
