@@ -11,10 +11,14 @@ export function ChartArchive({
   chart,
   onSelect,
   initialImport,
+  onImport,
+  pending,
 }: {
   chart: Subsector;
   onSelect: (chart: Subsector) => void;
   initialImport: ImportedChart | null;
+  onImport: (chart: ImportedChart) => void;
+  pending: boolean;
 }) {
   const [imported, setImported] = useState(initialImport);
   const [storageWarning, setStorageWarning] = useState(false);
@@ -23,7 +27,7 @@ export function ChartArchive({
   const [loading, setLoading] = useState(false);
   const request = useRef(0);
   return (
-    <details className={styles.archive}>
+    <details className={styles.archive} open={pending || undefined}>
       <summary>
         Chart bureau · {chart.title} · {chart.worlds.length} worlds ·{' '}
         {chart === demoChart ? 'Demonstration' : 'Imported'}
@@ -66,6 +70,7 @@ export function ChartArchive({
                 setImported(next);
                 setStorageWarning(!saveChart(next));
                 onSelect(result.charts[0]!);
+                onImport(next);
               }
             } catch {
               setErrors([

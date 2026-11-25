@@ -15,6 +15,7 @@ The project is under active development and is not a complete Traveller simulati
 - **Compares two routes:** lowest purchased fuel cost and fewest jumps. They are not always the same journey.
 - **Lets you configure your vessel**, including displacement, jump rating, fuel capacity, starting fuel, scoops, and streamlining. The applied ship is saved locally in the browser.
 - **Imports Traveller Map T5 tab-delimited data** from a local file, including subsectors from a whole sector. The last imported file and selected subsector are saved locally on the device when browser storage is available; files are not uploaded.
+- **Shares passages by link**, including the route preference and vessel particulars. Imported-chart recipients need the same T5 file on their device; chart data is not included in the link.
 - **Works on desktop and mobile**, with keyboard-accessible chart inspection, responsive chart/manifest views, and reduced-motion support.
 
 The default fictional chart, **Ember Reach**, is included so you can explore without downloading any Traveller data.

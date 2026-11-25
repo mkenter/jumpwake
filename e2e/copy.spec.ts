@@ -10,7 +10,7 @@ test('copies the selected passage and announces success', async ({
   await page
     .getByRole('combobox', { name: 'Destination' })
     .selectOption('cinder');
-  await page.getByRole('button', { name: 'Copy passage' }).click();
+  await page.getByRole('button', { name: 'Copy passage', exact: true }).click();
   await expect(page.getByText('Passage copied to clipboard.')).toBeVisible();
   const text = await page.evaluate(() =>
     (
