@@ -8,6 +8,7 @@ import {
   preferenceNames,
   routeStops,
   presentWorlds,
+  passageMarkdown,
 } from './presentation';
 import { PassageChart } from './PassageChart';
 import { WorldInspection, type Inspection } from './WorldInspection';
@@ -361,6 +362,26 @@ export function PassageThree() {
                   Jump–{ship.jumpRating} · {ship.displacementTons} t
                   {ship.hasFuelScoops ? ' · scoops' : ''}
                 </span>
+                {passage && (
+                  <CopyPassage
+                    key={JSON.stringify([
+                      chart,
+                      vessel,
+                      origin,
+                      destination,
+                      preference,
+                    ])}
+                    markdown={passageMarkdown({
+                      chart,
+                      passage,
+                      preference,
+                      ship,
+                      state,
+                      stops,
+                      worldById,
+                    })}
+                  />
+                )}
               </div>
               {!compact && inspectionPanel}
               {passage ? (
@@ -486,6 +507,28 @@ export function PassageThree() {
           ? `Inspecting ${worldById(inspection.id).name}, ${address(worldById(inspection.id))}. Passage unchanged.`
           : ''}
       </p>
+    </div>
+  );
+}
+
+function CopyPassage({ markdown }: { markdown: string }) {
+  const [message, setMessage] = useState('');
+  async function copy() {
+    try {
+      if (!navigator.clipboard?.writeText)
+        throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(markdown);
+      setMessage('Passage copied to clipboard.');
+    } catch {
+      setMessage('Could not copy passage. Clipboard access is unavailable.');
+    }
+  }
+  return (
+    <div className={styles.copyControl}>
+      <button type="button" className={styles.sampleLink} onClick={copy}>
+        Copy passage
+      </button>
+      <span aria-live="polite">{message}</span>
     </div>
   );
 }

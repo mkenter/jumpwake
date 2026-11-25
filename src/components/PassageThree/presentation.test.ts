@@ -1,8 +1,13 @@
-import { classicTraveller1981 } from '../../rules/classicTraveller1981';
+import {
+  INITIAL_STATE,
+  SHIP,
+  classicTraveller1981,
+} from '../../rules/classicTraveller1981';
 import { describe, expect, it } from 'vitest';
 import { createRouter } from '../../engine';
 import { EMBER_REACH } from '../../data/emberReach';
 import {
+  passageMarkdown,
   hexes,
   point,
   routeStops as formatStops,
@@ -113,3 +118,35 @@ const worlds = presentWorlds(EMBER_REACH);
 const worldById = (id: string) => worlds.find((w) => w.id === id)!;
 const routeStops = (result: Parameters<typeof formatStops>[0]) =>
   formatStops(result, worldById);
+
+describe('passage Markdown', () => {
+  it('escapes chart and world names and preserves repeated visits and jump distances', () => {
+    const result = router.findRoute('aster', 'orison');
+    if (result.status !== 'reachable') throw new Error('Expected route');
+    const renamed = worlds.map((world) =>
+      world.id === 'serein' ? { ...world, name: 'Serein *[port]*' } : world,
+    );
+    const lookup = (id: string) => renamed.find((world) => world.id === id)!;
+    const text = passageMarkdown({
+      chart: { title: 'Chart #1', source: 'Source [A]', worlds: EMBER_REACH },
+      passage: result,
+      preference: 'lowest-fuel-cost',
+      ship: SHIP,
+      state: INITIAL_STATE,
+      stops: formatStops(result, lookup),
+      worldById: lookup,
+    });
+    expect(text).toContain('Chart \\#1');
+    expect(text).toContain('Source \\[A\\]');
+    const eventLines = text.split('\n').filter((line) => /^\d+\. /.test(line));
+    expect(eventLines).toHaveLength(14);
+    expect(
+      eventLines.filter((line) => line.includes('**Serein \\*\\[port\\]\\***')),
+    ).toHaveLength(4);
+    expect(eventLines.filter((line) => /\d+ pc jump;/.test(line))).toHaveLength(
+      result.jumpCount,
+    );
+    expect(eventLines[9]).toContain('Ilex');
+    expect(eventLines[11]).toContain('Serein');
+  });
+});

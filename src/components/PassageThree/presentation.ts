@@ -1,4 +1,4 @@
-import type { ChartWorld } from '../../import/subsector';
+import type { ChartWorld, Subsector } from '../../import/subsector';
 import type { RouteResult, RoutingPreference } from '../../engine';
 import type { FuelSource } from '../../rules/types';
 import {
@@ -102,3 +102,46 @@ export const hexes = Array.from({ length: 80 }, (_, i) => {
   };
 });
 export const credits = (n: number) => `Cr${n.toLocaleString('en-GB')}`;
+
+export function passageMarkdown({
+  chart,
+  passage,
+  preference,
+  ship,
+  state,
+  stops,
+  worldById,
+}: {
+  chart: Subsector;
+  passage: Extract<RouteResult, { status: 'reachable' }>;
+  preference: RoutingPreference;
+  ship: ShipSpecifications;
+  state: ShipOperatingState;
+  stops: readonly Stop[];
+  worldById: (id: string) => PresentedWorld;
+}): string {
+  const escape = (value: string) =>
+    value.replace(/[\\`*_{}[\]<>#+.!|~-]/g, '\\$&').replace(/[\r\n]+/g, ' ');
+  const origin = worldById(passage.originId);
+  const destination = worldById(passage.destinationId);
+  return [
+    `# Passage: ${escape(origin.name)} to ${escape(destination.name)}`,
+    '',
+    `- Chart: ${escape(chart.title)}`,
+    `- Source: ${escape(chart.source)}`,
+    `- Origin: ${escape(origin.name)} (${address(origin)})`,
+    `- Destination: ${escape(destination.name)} (${address(destination)})`,
+    `- Routing: ${preferenceNames[preference]}`,
+    `- Vessel: Jump–${ship.jumpRating}, ${ship.displacementTons} tons`,
+    `- Starting jump fuel: ${state.initialFuelTons} t`,
+    `- Jumps: ${passage.jumpCount}`,
+    `- Distance: ${passage.totalDistance} pc`,
+    `- Purchased fuel: ${credits(passage.totalCostCredits)}`,
+    '',
+    '## Events',
+    ...stops.map(
+      (stop, i) =>
+        `${i + 1}. **${escape(worldById(stop.world).name)}** — ${stop.kind === 'jump' ? `${stop.jump} pc jump; ` : ''}${escape(stop.action)}; fuel ${stop.fuel}; credits ${credits(stop.cost)}`,
+    ),
+  ].join('\n');
+}
