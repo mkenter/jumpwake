@@ -147,3 +147,35 @@ test('imported ship eligibility, comparison, manifest, unreachable and touch ins
     page.getByRole('combobox', { name: 'Destination', exact: true }),
   ).toHaveValue('hex-0202');
 });
+
+test('restores the selected imported subsector after reload and can forget it', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByText('Chart bureau ·').click();
+  await page.getByLabel('Load navigation chart').setInputFiles({
+    name: 'sector.tab',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(
+      header + record('0101', 'First') + record('0901', 'Second'),
+    ),
+  });
+  await page.getByLabel('Imported subsector').selectOption('B');
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: /sector.tab · Subsector B/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('combobox', { name: 'Origin' }).locator('option'),
+  ).toContainText(['Choose origin', 'Second']);
+  await page.getByText('Chart bureau ·').click();
+  await expect(page.getByLabel('Imported subsector')).toHaveValue('B');
+  await expect(
+    page.getByText('Source: sector.tab', { exact: false }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Forget imported chart' }).click();
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: /Ember Reach.*field chart/ }),
+  ).toBeVisible();
+});

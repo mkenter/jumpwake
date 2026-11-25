@@ -5,15 +5,20 @@ import {
   parseSubsectors,
   type Subsector,
 } from '../../../import/subsector';
+import { forgetChart, saveChart, type ImportedChart } from '../chartStorage';
 import styles from './ChartArchive.module.css';
 export function ChartArchive({
   chart,
   onSelect,
+  initialImport,
 }: {
   chart: Subsector;
   onSelect: (chart: Subsector) => void;
+  initialImport: ImportedChart | null;
 }) {
-  const [charts, setCharts] = useState<Subsector[]>([]);
+  const [imported, setImported] = useState(initialImport);
+  const [storageWarning, setStorageWarning] = useState(false);
+  const charts = imported?.charts ?? [];
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const request = useRef(0);
@@ -24,8 +29,9 @@ export function ChartArchive({
         {chart === demoChart ? 'Demonstration' : 'Imported'}
       </summary>
       <p>
-        Load a local UTF-8 T5 Tab Delimited chart. Files stay in this browser
-        session; refresh requires importing again.
+        Load a local UTF-8 T5 Tab Delimited chart. The last imported file is
+        saved on this device when browser storage is available; files are not
+        uploaded.
       </p>
       <label>
         Load navigation chart{' '}
@@ -51,7 +57,14 @@ export function ChartArchive({
               const result = parseSubsectors(text, file.name);
               if (!result.ok) setErrors(result.errors);
               else {
-                setCharts(result.charts);
+                const next = {
+                  text,
+                  source: file.name,
+                  selected: result.charts[0]!.position!,
+                  charts: result.charts,
+                };
+                setImported(next);
+                setStorageWarning(!saveChart(next));
                 onSelect(result.charts[0]!);
               }
             } catch {
@@ -65,6 +78,12 @@ export function ChartArchive({
         />
       </label>
       {loading && <p role="status">Reading chart…</p>}
+      {storageWarning && (
+        <p role="status">
+          Browser storage is unavailable. Chart changes may not persist after
+          reload.
+        </p>
+      )}
       {errors.length > 0 && (
         <div role="alert">
           <p>
@@ -86,9 +105,12 @@ export function ChartArchive({
           Imported subsector{' '}
           <select
             value={charts.includes(chart) ? chart.position : ''}
-            onChange={(event) =>
-              onSelect(charts.find((c) => c.position === event.target.value)!)
-            }
+            onChange={(event) => {
+              const next = { ...imported!, selected: event.target.value };
+              setImported(next);
+              setStorageWarning(!saveChart(next));
+              onSelect(charts.find((c) => c.position === event.target.value)!);
+            }}
           >
             <option value="" disabled>
               Choose imported chart
@@ -100,6 +122,19 @@ export function ChartArchive({
             ))}
           </select>
         </label>
+      )}
+      {imported && (
+        <button
+          onClick={() => {
+            ++request.current;
+            setImported(null);
+            setErrors([]);
+            setStorageWarning(!forgetChart());
+            onSelect(demoChart);
+          }}
+        >
+          Forget imported chart
+        </button>
       )}
       {chart !== demoChart && (
         <button onClick={() => onSelect(demoChart)}>

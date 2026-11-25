@@ -20,9 +20,15 @@ import { Masthead } from './Masthead';
 import styles from './PassageThree.module.css';
 import { VesselParticulars } from './VesselParticulars';
 import { restoreVessel, saveVessel, type Vessel } from './vessel';
+import { restoreChart } from './chartStorage';
 
 export function PassageThree() {
-  const [chart, setChart] = useState(demoChart);
+  const [restored] = useState(restoreChart);
+  const [chart, setChart] = useState(
+    () =>
+      restored?.charts.find((item) => item.position === restored.selected) ??
+      demoChart,
+  );
   const worlds = useMemo(() => presentWorlds(chart.worlds), [chart]);
   const worldById = (id: string) => worlds.find((world) => world.id === id)!;
   const [vessel, setVessel] = useState(restoreVessel);
@@ -208,7 +214,11 @@ export function PassageThree() {
         onNavigate={navigate}
       />
       <main id="main-content" tabIndex={-1}>
-        <ChartArchive chart={chart} onSelect={selectChart} />
+        <ChartArchive
+          chart={chart}
+          onSelect={selectChart}
+          initialImport={restored}
+        />
         <section
           id="journey-controls"
           className={styles.journeyControls}
