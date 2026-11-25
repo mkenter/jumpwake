@@ -87,7 +87,10 @@ export function ChartArchive({
         }}
         onDragOver={(event) => {
           event.preventDefault();
-          event.dataTransfer.dropEffect = loading ? 'none' : 'copy';
+          event.dataTransfer.dropEffect =
+            !loading && Array.from(event.dataTransfer.types).includes('Files')
+              ? 'copy'
+              : 'none';
         }}
         onDragLeave={(event) => {
           event.preventDefault();
