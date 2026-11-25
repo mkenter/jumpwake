@@ -506,3 +506,14 @@
   background: var(--paper);
   z-index: 30;
 }
+
+.copyControl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+}
+.copyControl > span {
+  font-size: 10px;
+  color: var(--muted);
+}

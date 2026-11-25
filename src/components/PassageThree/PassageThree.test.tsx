@@ -409,6 +409,9 @@ describe('copy passage', () => {
     expect(first).toContain('1. **Aster Quay**');
     expect(screen.getByText('Passage copied to clipboard.')).toBeVisible();
     await user.click(screen.getByRole('radio', { name: /^Fewest jumps/ }));
+    expect(
+      screen.queryByText('Passage copied to clipboard.'),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Copy passage' }));
     expect(writeText.mock.calls[1]![0]).toContain('Routing: Fewest jumps');
     expect(writeText.mock.calls[1]![0]).not.toEqual(first);

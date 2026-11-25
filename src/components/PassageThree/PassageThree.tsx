@@ -8,6 +8,7 @@ import {
   preferenceNames,
   routeStops,
   presentWorlds,
+  passageMarkdown,
 } from './presentation';
 import { PassageChart } from './PassageChart';
 import { WorldInspection, type Inspection } from './WorldInspection';
@@ -43,7 +44,6 @@ export function PassageThree() {
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
   const [view, setView] = useState<'chart' | 'manifest'>('chart');
-  const [copyMessage, setCopyMessage] = useState('');
   const [compact, setCompact] = useState(
     () => window.matchMedia('(max-width: 899px)').matches,
   );
@@ -96,41 +96,6 @@ export function PassageThree() {
   );
   const cost = passage?.totalCostCredits ?? 0;
   const distance = passage?.totalDistance ?? 0;
-  async function copyPassage() {
-    const escape = (value: string) =>
-      value.replace(/[\\`*_{}[\]<>#+.!|~-]/g, '\\$&').replace(/[\r\n]+/g, ' ');
-    if (!passage) return;
-    const lines = [
-      `# Passage: ${escape(worldById(origin).name)} to ${escape(worldById(destination).name)}`,
-      '',
-      `- Chart: ${escape(chart.title)}`,
-      `- Source: ${escape(chart.source)}`,
-      `- Origin: ${escape(worldById(origin).name)} (${address(worldById(origin))})`,
-      `- Destination: ${escape(worldById(destination).name)} (${address(worldById(destination))})`,
-      `- Routing: ${preferenceNames[preference]}`,
-      `- Vessel: Jump–${ship.jumpRating}, ${ship.displacementTons} tons`,
-      `- Starting jump fuel: ${state.initialFuelTons} t`,
-      `- Jumps: ${passage.jumpCount}`,
-      `- Distance: ${distance} pc`,
-      `- Purchased fuel: ${credits(cost)}`,
-      '',
-      '## Events',
-      ...stops.map(
-        (stop, i) =>
-          `${i + 1}. **${escape(worldById(stop.world).name)}** — ${escape(stop.action)}; fuel ${stop.fuel}; credits ${credits(stop.cost)}`,
-      ),
-    ];
-    try {
-      if (!navigator.clipboard?.writeText)
-        throw new Error('Clipboard unavailable');
-      await navigator.clipboard.writeText(lines.join('\n'));
-      setCopyMessage('Passage copied to clipboard.');
-    } catch {
-      setCopyMessage(
-        'Could not copy passage. Clipboard access is unavailable.',
-      );
-    }
-  }
   const status = !origin
     ? 'Choose an origin to begin.'
     : !destination
@@ -397,6 +362,26 @@ export function PassageThree() {
                   Jump–{ship.jumpRating} · {ship.displacementTons} t
                   {ship.hasFuelScoops ? ' · scoops' : ''}
                 </span>
+                {passage && (
+                  <CopyPassage
+                    key={JSON.stringify([
+                      chart,
+                      vessel,
+                      origin,
+                      destination,
+                      preference,
+                    ])}
+                    markdown={passageMarkdown({
+                      chart,
+                      passage,
+                      preference,
+                      ship,
+                      state,
+                      stops,
+                      worldById,
+                    })}
+                  />
+                )}
               </div>
               {!compact && inspectionPanel}
               {passage ? (
@@ -498,18 +483,12 @@ export function PassageThree() {
                 </div>
               )}
               {passage && (
-                <button type="button" onClick={copyPassage}>
-                  Copy passage
-                </button>
-              )}
-              {passage && (
                 <p className={styles.manifestNote}>
                   Jump fuel before → after each event. Arrival:{' '}
                   {passage.fuelRemainingTons} t. Initial {state.initialFuelTons}{' '}
                   t is a sunk cost.
                 </p>
               )}
-              <p aria-live="polite">{copyMessage}</p>
             </section>
             {compact && inspectionPanel}
           </div>
@@ -528,6 +507,28 @@ export function PassageThree() {
           ? `Inspecting ${worldById(inspection.id).name}, ${address(worldById(inspection.id))}. Passage unchanged.`
           : ''}
       </p>
+    </div>
+  );
+}
+
+function CopyPassage({ markdown }: { markdown: string }) {
+  const [message, setMessage] = useState('');
+  async function copy() {
+    try {
+      if (!navigator.clipboard?.writeText)
+        throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(markdown);
+      setMessage('Passage copied to clipboard.');
+    } catch {
+      setMessage('Could not copy passage. Clipboard access is unavailable.');
+    }
+  }
+  return (
+    <div className={styles.copyControl}>
+      <button type="button" className={styles.sampleLink} onClick={copy}>
+        Copy passage
+      </button>
+      <span aria-live="polite">{message}</span>
     </div>
   );
 }
