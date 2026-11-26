@@ -150,7 +150,18 @@ export function VesselParticulars({
     ),
   } as VesselDesign;
   const assessment = assessVesselDesign(assessedDesign, catalog);
+  const invalidManual = Object.values(manual).some((value) => {
+    if (!value.rating && !value.provenance) return false;
+    const rating = Number(value.rating);
+    return (
+      !Number.isInteger(rating) ||
+      rating < 1 ||
+      rating > 6 ||
+      !value.provenance.trim()
+    );
+  });
   const operationalError =
+    invalidManual ||
     assessment.status === 'invalid' ||
     assessment.status === 'incomplete' ||
     assessment.effectiveJump === undefined ||
@@ -361,8 +372,8 @@ export function VesselParticulars({
                 <legend>Operational particulars</legend>
                 <p>
                   These checks do not establish full construction legality.
-                  Software is not assessed. Details are kept only for this
-                  visit.
+                  Software is not assessed. Applied particulars are saved and
+                  shared; private catalog data is not included.
                 </p>
                 {(
                   [
@@ -489,6 +500,12 @@ export function VesselParticulars({
                       installed tankage.
                     </p>
                   )}
+                {submitted && invalidManual && (
+                  <p role="alert">
+                    Each referee override needs a rating from 1 to 6 and a
+                    source.
+                  </p>
+                )}
                 {submitted && operationalError && (
                   <p role="alert">
                     Complete or correct the operational particulars before

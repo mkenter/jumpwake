@@ -3,6 +3,8 @@ import { demoChart, type Subsector } from '../../import/subsector';
 import { createClassicTraveller1981Rules } from '../../rules/classicTraveller1981';
 import { parseVessel, type Vessel } from './vessel';
 
+export const MAX_PASSAGE_LENGTH = 2048;
+
 export interface PassageLink {
   version: 1 | 2 | 3;
   stops?: string[];
@@ -48,7 +50,11 @@ export function encodePassage(link: PassageLink): string {
 
 export function decodePassage(encoded: string): PassageLink | null {
   try {
-    if (!encoded || encoded.length > 2048 || !/^[A-Za-z0-9_-]+$/.test(encoded))
+    if (
+      !encoded ||
+      encoded.length > MAX_PASSAGE_LENGTH ||
+      !/^[A-Za-z0-9_-]+$/.test(encoded)
+    )
       return null;
     const raw = atob(encoded.replace(/-/g, '+').replace(/_/g, '/'));
     const value: PassageLink = JSON.parse(

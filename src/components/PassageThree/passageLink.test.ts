@@ -6,6 +6,7 @@ import {
   decodePassage,
   encodePassage,
   passageMatchesChart,
+  MAX_PASSAGE_LENGTH,
   type PassageLink,
 } from './passageLink';
 
@@ -52,6 +53,24 @@ describe('passage links', () => {
       .replace(/\//g, '_')
       .replace(/=+$/, '');
     expect(decodePassage(encoded)).toBeNull();
+  });
+  it('round trips operational source text just below the link limit and rejects it above the limit', () => {
+    const operational: PassageLink = {
+      ...link,
+      version: 3,
+      stops: [],
+      mode: 'waypoints',
+      vessel: {
+        ...link.vessel,
+        design: { manualPerformance: { jump: { rating: 2, provenance: '' } } },
+      },
+    };
+    const source = operational.vessel.design!.manualPerformance!.jump!;
+    while (encodePassage(operational).length <= MAX_PASSAGE_LENGTH)
+      source.provenance += 'x';
+    expect(decodePassage(encodePassage(operational))).toBeNull();
+    source.provenance = source.provenance.slice(0, -1);
+    expect(decodePassage(encodePassage(operational))).toEqual(operational);
   });
   it('round trips ordered stops and the itinerary mode', () => {
     const itinerary: PassageLink = {

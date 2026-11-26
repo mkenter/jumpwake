@@ -36,6 +36,7 @@ import {
   chartDigest,
   decodePassage,
   encodePassage,
+  MAX_PASSAGE_LENGTH,
   passageMatchesChart,
   type PassageLink,
 } from './passageLink';
@@ -810,8 +811,13 @@ function CopyPassageLink({
         destination,
         preference,
       });
-      if (payload.length > 2048 || !navigator.clipboard?.writeText)
-        throw new Error('Unavailable');
+      if (payload.length > MAX_PASSAGE_LENGTH) {
+        setMessage(
+          'Passage link is too long to share. Shorten referee source notes or reduce stops and try again.',
+        );
+        return;
+      }
+      if (!navigator.clipboard?.writeText) throw new Error('Unavailable');
       const url = new URL(window.location.href);
       url.search = '';
       url.hash = '';

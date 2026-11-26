@@ -503,6 +503,28 @@ describe('copy passage', () => {
     expect(screen.queryByRole('button', { name: 'Copy passage' })).toBeNull();
   });
 
+  it('explains when operational source notes make the link too long', async () => {
+    localStorage.setItem(
+      VESSEL_STORAGE_KEY,
+      JSON.stringify({
+        version: 2,
+        ...DEFAULT_VESSEL,
+        design: {
+          manualPerformance: {
+            jump: { rating: 2, provenance: 'x'.repeat(2000) },
+          },
+        },
+      }),
+    );
+    const { user } = await passage();
+    const writeText = vi
+      .spyOn(navigator.clipboard, 'writeText')
+      .mockResolvedValue();
+    await user.click(screen.getByRole('button', { name: 'Copy passage link' }));
+    expect(screen.getByText(/Passage link is too long to share/)).toBeVisible();
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
   it('reports clipboard denial without removing the passage', async () => {
     const { user, manifest } = await passage();
     vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(
