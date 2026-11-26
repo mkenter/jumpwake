@@ -172,3 +172,31 @@ test('normal-motion reveal and sticky navigation retain focus and scroll', async
   );
   expect(await page.evaluate('scrollY')).toBeGreaterThan(100);
 });
+
+test('operational particulars control routing and remain session-only', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Edit particulars' }).click();
+  await page.getByLabel('Assess operational particulars').check();
+  await page.getByLabel('Jump drive letter', { exact: true }).fill('A');
+  await page
+    .getByLabel('Maneuver drive letter (enter none if absent)')
+    .fill('A');
+  await page.getByLabel('Power plant letter').fill('A');
+  await page.getByLabel('Computer model').fill('1');
+  await page.getByLabel('Installed total tankage (tons)').fill('80');
+  await expect(
+    page.getByText(/Assessment: assessed; drive jump/),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Apply particulars' }).click();
+  await expect(page.getByLabel('Active vessel')).toContainText('Jump-1');
+  await expect(
+    page.getByText(/Operational details are not saved/),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('Active vessel')).toContainText('Jump-1');
+  await expect(
+    page.getByText(/Route-only vessel: operational particulars are incomplete/),
+  ).toBeVisible();
+});

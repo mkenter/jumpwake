@@ -27,6 +27,13 @@ describe('passage links', () => {
       false,
     );
   });
+  it('omits session-only operational particulars from shared links', () => {
+    const operational = {
+      ...link,
+      vessel: { ...link.vessel, design: { jumpDrive: 'A' } },
+    };
+    expect(decodePassage(encodePassage(operational))).toEqual(link);
+  });
   it('round trips ordered stops and the itinerary mode', () => {
     const itinerary: PassageLink = {
       ...link,

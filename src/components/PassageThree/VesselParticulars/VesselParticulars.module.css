@@ -359,3 +359,13 @@
     min-width: 64px;
   }
 }
+
+.operationalDetails label {
+  display: block;
+  margin-block: 0.5rem;
+}
+
+.operationalDetails input:not([type='checkbox']) {
+  display: block;
+  max-width: 100%;
+}

@@ -159,4 +159,66 @@ describe('VesselParticulars', () => {
     await user.click(screen.getByRole('button', { name: 'Apply particulars' }));
     expect(onApply).toHaveBeenCalledWith(DEFAULT_VESSEL);
   });
+  it('assesses operational particulars and applies the computer-limited jump', async () => {
+    const { user, edit, onApply } = setup();
+    await user.click(edit);
+    await user.click(screen.getByLabelText('Assess operational particulars'));
+    expect(screen.getByText(/Assessment: incomplete/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Jump drive letter'), 'A');
+    await user.type(
+      screen.getByLabelText('Maneuver drive letter (enter none if absent)'),
+      'A',
+    );
+    await user.type(screen.getByLabelText('Power plant letter'), 'A');
+    await user.type(screen.getByLabelText('Computer model'), '1');
+    await user.type(
+      screen.getByLabelText('Installed total tankage (tons)'),
+      '80',
+    );
+    expect(screen.getByText(/Assessment: assessed/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Apply particulars' }));
+    expect(onApply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ship: expect.objectContaining({ jumpRating: 1 }),
+        design: expect.objectContaining({ jumpDrive: 'A', tankageTons: 80 }),
+      }),
+    );
+  });
+
+  it('prevents applying unavailable performance until a sourced referee override is provided', async () => {
+    const { user, edit, onApply } = setup();
+    await user.click(edit);
+    await user.click(screen.getByLabelText('Assess operational particulars'));
+    for (const name of [
+      'Jump drive letter',
+      'Maneuver drive letter (enter none if absent)',
+      'Power plant letter',
+    ])
+      await user.type(screen.getByLabelText(name), 'B');
+    await user.type(screen.getByLabelText('Computer model'), '2');
+    await user.type(
+      screen.getByLabelText('Installed total tankage (tons)'),
+      '100',
+    );
+    expect(screen.getAllByText(/performance is unavailable/)).toHaveLength(3);
+    await user.click(screen.getByRole('button', { name: 'Apply particulars' }));
+    expect(onApply).not.toHaveBeenCalled();
+    for (const kind of ['jump', 'maneuver', 'plant']) {
+      await user.type(
+        screen.getByLabelText(`Referee ${kind} rating for unavailable data`),
+        '2',
+      );
+      await user.type(
+        screen.getByLabelText(`Referee ${kind} source`),
+        'Referee',
+      );
+    }
+    expect(screen.getByText(/Assessment: custom/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Apply particulars' }));
+    expect(onApply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ship: expect.objectContaining({ jumpRating: 2 }),
+      }),
+    );
+  });
 });
