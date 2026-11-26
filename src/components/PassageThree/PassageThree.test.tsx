@@ -9,6 +9,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PassageThree } from './PassageThree';
+import * as engine from '../../engine';
 import { DEFAULT_VESSEL, VESSEL_STORAGE_KEY } from './vessel';
 
 beforeEach(() => {
@@ -52,6 +53,31 @@ async function passage() {
 }
 
 describe('applied vessel and passage integration', () => {
+  it('does not recalculate an unreachable itinerary on unrelated renders', async () => {
+    const actualCreateRouter = engine.createRouter;
+    const findRoute = vi.fn();
+    vi.spyOn(engine, 'createRouter').mockImplementation((systems, rules) => {
+      const router = actualCreateRouter(systems, rules);
+      findRoute.mockImplementation(router.findRoute);
+      return { ...router, findRoute };
+    });
+    const user = userEvent.setup();
+    render(<PassageThree />);
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Origin' }),
+      'aster',
+    );
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Destination' }),
+      'last',
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Destination unreachable',
+    );
+    expect(findRoute).toHaveBeenCalledTimes(2);
+    await user.click(screen.getByRole('button', { name: 'Edit particulars' }));
+    expect(findRoute).toHaveBeenCalledTimes(2);
+  });
   it('retains the demonstration route, then replaces obsolete events and inspection for Jump-1', async () => {
     const { user, manifest, edit, apply } = await passage();
     expect(screen.getByRole('status')).toHaveTextContent('3 jumps · 7 pc');

@@ -194,24 +194,16 @@ export function PassageThree() {
   );
   const cost = passage?.totalCostCredits ?? 0;
   const distance = passage?.totalDistance ?? 0;
-  const failedLeg =
-    result?.status === 'unreachable'
-      ? [...stopsRequired, destination].findIndex(
-          (_, i, all) =>
-            (mode === 'direct' && all[i] === (i === 0 ? origin : all[i - 1])) ||
-            router.findRoute(origin, all[i]!, preference, all.slice(0, i), mode)
-              .status === 'unreachable',
-        )
-      : -1;
-  const unreachableReason =
-    result?.status === 'unreachable'
+  const unreachableReason = useMemo(() => {
+    const failedLeg = result?.status === 'unreachable' ? result.failedLeg : -1;
+    return result?.status === 'unreachable'
       ? failedLeg >= 0 && (stopsRequired.length > 0 || mode === 'direct')
         ? (() => {
             const from =
               failedLeg === 0 ? origin : stopsRequired[failedLeg - 1]!;
             const to = [...stopsRequired, destination][failedLeg]!;
-            const fromWorld = worldById(from);
-            const toWorld = worldById(to);
+            const fromWorld = worlds.find((world) => world.id === from)!;
+            const toWorld = worlds.find((world) => world.id === to)!;
             const distance = hexDistance(
               toAxial(fromWorld.hex),
               toAxial(toWorld.hex),
@@ -228,6 +220,17 @@ export function PassageThree() {
           ? 'Jump range is sufficient, but current fuel and refueling constraints prevent a passage.'
           : `No chain of jumps reaches the destination at Jump-${ship.jumpRating}.`
       : '';
+  }, [
+    result,
+    stopsRequired,
+    destination,
+    origin,
+    worlds,
+    mode,
+    ship,
+    rules,
+    chart,
+  ]);
   const status = !origin
     ? 'Choose an origin to begin.'
     : !destination

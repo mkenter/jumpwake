@@ -29,6 +29,8 @@ export interface StarSystem {
   readonly hex: SubsectorHex;
   readonly starport: Starport;
   readonly gasGiant: boolean;
+  /** Referee override for the assumed availability of unrefined fuel at A/B ports. */
+  readonly unrefinedFuelAvailable?: boolean;
 }
 
 /** Supported input domain, not CT construction legality or minimum tankage. */
@@ -74,7 +76,7 @@ export function validateShip(
     throw new TypeError('Scoops and streamlining must be booleans');
 }
 
-/** CT81 availability with provisional A/B unrefined sales */
+/** CT81 Book 2 pp. 6–7, 14–15; Book 3 p. 10. A/B unrefined sales are a referee assumption. */
 export function createClassicTraveller1981Rules(
   ship: ShipSpecifications,
   state: ShipOperatingState,
@@ -105,7 +107,11 @@ export function createClassicTraveller1981Rules(
           grade: 'unrefined',
           creditsPerTon: 0,
         });
-      if ('ABCD'.includes(system.starport))
+      if (
+        'CD'.includes(system.starport) ||
+        ('AB'.includes(system.starport) &&
+          (system.unrefinedFuelAvailable ?? true))
+      )
         sources.push({
           source: 'starport',
           grade: 'unrefined',
@@ -122,7 +128,10 @@ export function createClassicTraveller1981Rules(
     validateSystem(system: StarSystem) {
       if (
         !['A', 'B', 'C', 'D', 'E', 'X'].includes(system.starport) ||
-        typeof system.gasGiant !== 'boolean'
+        typeof system.gasGiant !== 'boolean' ||
+        (system.unrefinedFuelAvailable !== undefined &&
+          (typeof system.unrefinedFuelAvailable !== 'boolean' ||
+            !'AB'.includes(system.starport)))
       )
         throw new Error('Invalid fuel facilities');
     },

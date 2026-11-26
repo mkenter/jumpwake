@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import {
   fuelSources,
+  classicTraveller1981,
   jumpFuelTons,
   INITIAL_STATE,
   SHIP,
@@ -104,4 +105,30 @@ it('snapshots specifications and state at creation', () => {
   state.initialFuelTons = 0;
   expect(rules.initialFuelTons).toBe(7);
   expect(rules.jumpFuelTons(3)).toBe(60);
+});
+
+it('allows a referee to disable assumed A/B unrefined sales per port', () => {
+  for (const starport of ['A', 'B'] as const) {
+    const system = {
+      id: 's',
+      name: 'S',
+      hex: { column: 1, row: 1 },
+      starport,
+      gasGiant: false,
+      unrefinedFuelAvailable: false,
+    };
+    expect(fuelSources(system)).toEqual([
+      { source: 'starport', grade: 'refined', creditsPerTon: 500 },
+    ]);
+    expect(
+      fuelSources({ ...system, unrefinedFuelAvailable: true }),
+    ).toHaveLength(2);
+    expect(fuelSources({ ...system, gasGiant: true })[0]).toMatchObject({
+      source: 'gas-giant',
+      creditsPerTon: 0,
+    });
+    expect(() =>
+      classicTraveller1981.validateSystem?.({ ...system, starport: 'C' }),
+    ).toThrow();
+  }
 });

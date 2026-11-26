@@ -68,6 +68,8 @@ export type RouteResult =
       readonly status: 'unreachable';
       readonly originId: string;
       readonly destinationId: string;
+      /** Zero-based index of the first target that cannot be reached in order. */
+      readonly failedLeg: number;
     };
 interface Label {
   cost: number;
@@ -259,12 +261,19 @@ export function createRouter<S extends RouteSystem>(
         initialStage * stateWidth + origin * width + levelIndices.get(initial)!;
       labels[start] = { cost: 0, jumps: 0, distance: 0, key: [], events: [] };
       frontier.update(start);
+      let furthestStage = initialStage;
       while (true) {
         const state = frontier.pop();
         if (state === undefined)
-          return { status: 'unreachable', originId, destinationId };
+          return {
+            status: 'unreachable',
+            originId,
+            destinationId,
+            failedLeg: furthestStage,
+          };
         const label = labels[state]!;
         const stage = Math.floor(state / stateWidth);
+        furthestStage = Math.max(furthestStage, stage);
         const current = Math.floor((state % stateWidth) / width);
         const fuel = levels[state % width]!;
         if (
