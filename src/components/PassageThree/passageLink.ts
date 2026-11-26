@@ -7,7 +7,9 @@ import {
 import type { Vessel } from './vessel';
 
 export interface PassageLink {
-  version: 1;
+  version: 1 | 2;
+  stops?: string[];
+  mode?: 'waypoints' | 'direct';
   chart:
     | { kind: 'demo' }
     | { kind: 'import'; digest: string; position: string; hint: string };
@@ -46,7 +48,16 @@ export function decodePassage(encoded: string): PassageLink | null {
       ),
     );
     if (
-      value.version !== 1 ||
+      ![1, 2].includes(value.version) ||
+      (value.version === 1 &&
+        (value.stops !== undefined || value.mode !== undefined)) ||
+      (value.version === 2 &&
+        (!Array.isArray(value.stops) ||
+          value.stops.length > 30 ||
+          value.stops.some(
+            (id) => typeof id !== 'string' || !id || id.length > 100,
+          ) ||
+          !['waypoints', 'direct'].includes(value.mode ?? ''))) ||
       !value.chart ||
       !(
         value.chart.kind === 'demo' ||
@@ -87,7 +98,8 @@ export function passageMatchesChart(
     return false;
   if (
     !chart.worlds.some((w) => w.id === link.origin) ||
-    !chart.worlds.some((w) => w.id === link.destination)
+    !chart.worlds.some((w) => w.id === link.destination) ||
+    (link.stops ?? []).some((id) => !chart.worlds.some((w) => w.id === id))
   )
     return false;
   try {
@@ -95,8 +107,13 @@ export function passageMatchesChart(
       createRouter(
         chart.worlds,
         createClassicTraveller1981Rules(link.vessel.ship, link.vessel.state),
-      ).findRoute(link.origin, link.destination, link.preference).status ===
-      'reachable'
+      ).findRoute(
+        link.origin,
+        link.destination,
+        link.preference,
+        link.stops,
+        link.mode,
+      ).status === 'reachable'
     );
   } catch {
     return false;

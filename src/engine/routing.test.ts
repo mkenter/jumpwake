@@ -1002,3 +1002,76 @@ it('breaks a fewest-jumps tie by purchased credits before distance and itinerary
   ).toEqual([0, 2, 6]);
   expectBalanced(systems, result);
 });
+
+describe('ordered itineraries', () => {
+  it('buys fuel before a waypoint when a later leg needs it', () => {
+    const rules = createClassicTraveller1981Rules(
+      {
+        displacementTons: 200,
+        jumpRating: 1,
+        jumpFuelCapacityTons: 40,
+        hasFuelScoops: false,
+        streamlined: true,
+      },
+      { initialFuelTons: 0 },
+    );
+    const router = createEngineRouter(
+      [system('a', 1, 'D'), system('b', 2), system('c', 3)],
+      rules,
+    );
+    const route = reached(
+      router.findRoute('a', 'c', 'lowest-fuel-cost', ['b']),
+    );
+    expect(route.events[0]).toMatchObject({
+      kind: 'refuel',
+      systemId: 'a',
+      tons: 40,
+    });
+    expect(route.fuelRemainingTons).toBe(0);
+  });
+  it('carries yacht fuel through successive jumps and supports revisits', () => {
+    // CT81 Book 2 p.19: yacht tankage supports two J1 jumps.
+    const rules = createClassicTraveller1981Rules(
+      {
+        displacementTons: 200,
+        jumpRating: 1,
+        jumpFuelCapacityTons: 40,
+        hasFuelScoops: false,
+        streamlined: true,
+      },
+      { initialFuelTons: 40 },
+    );
+    const router = createEngineRouter(
+      [system('a', 1), system('b', 2), system('c', 3)],
+      rules,
+    );
+    const route = reached(
+      router.findRoute('a', 'c', 'fewest-jumps', ['b'], 'direct'),
+    );
+    expect(
+      route.events.map(
+        (event) =>
+          event.kind === 'jump' && [event.fuelBeforeTons, event.fuelAfterTons],
+      ),
+    ).toEqual([
+      [40, 20],
+      [20, 0],
+    ]);
+    expect(
+      router.findRoute('a', 'a', 'fewest-jumps', ['b'], 'direct'),
+    ).toMatchObject({
+      status: 'reachable',
+      fuelRemainingTons: 0,
+      jumpCount: 2,
+    });
+    expect(
+      router.findRoute('a', 'c', 'fewest-jumps', ['b', 'a'], 'direct').status,
+    ).toBe('unreachable');
+    expect(
+      router.findRoute('a', 'c', 'fewest-jumps', [], 'direct').status,
+    ).toBe('unreachable');
+    expect(router.findRoute('a', 'c', 'fewest-jumps', ['b'])).toEqual(
+      router.findRoute('a', 'c', 'fewest-jumps', ['b']),
+    );
+  });
+});
