@@ -46,3 +46,27 @@ Read `README.md` for setup and current capabilities.
 - Keep documentation factual and concise. Update the relevant existing document
   when behavior or decisions change; avoid duplication and speculative guidance.
 - Do not publish, change repository visibility, or deploy without an explicit request.
+
+## Code review rules
+
+Prioritize actionable correctness, security, data integrity, accessibility, and
+behavioral regressions over stylistic preferences.
+
+- Routing changes must preserve fuel conservation, valid jump distances,
+  deterministic results, and the separation between navigation logic and
+  edition-specific Traveller rules.
+- Review asynchronous operations for race conditions, stale results,
+  cancellation, and loading-state recovery.
+- Invalid imports must not overwrite valid charts, persisted data, or active
+  passages.
+- Changes to persisted data or shared URL formats must preserve compatibility or
+  provide an explicit migration.
+- Behavioral changes and bug fixes must include meaningful regression coverage.
+  Passing CI alone does not establish correctness.
+- Preserve keyboard, touch, screen-reader, and reduced-motion support when
+  changing interactive components.
+- Follow the security requirements in [SECURITY.md](SECURITY.md).
+
+Report concrete findings with severity, affected code, user impact, and an
+actionable correction. Avoid speculative findings, formatting complaints, and
+unrelated refactoring.
