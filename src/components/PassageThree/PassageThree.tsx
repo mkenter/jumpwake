@@ -12,7 +12,11 @@ import {
 } from './presentation';
 import { PassageChart } from './PassageChart';
 import { WorldInspection, type Inspection } from './WorldInspection';
-import { createRouter, type RoutingPreference } from '../../engine';
+import {
+  createRouter,
+  hasJumpChain,
+  type RoutingPreference,
+} from '../../engine';
 import { PassageComparison } from './PassageComparison';
 import { demoChart, type Subsector } from '../../import/subsector';
 import { ChartArchive } from './ChartArchive';
@@ -180,11 +184,17 @@ export function PassageThree() {
   );
   const cost = passage?.totalCostCredits ?? 0;
   const distance = passage?.totalDistance ?? 0;
+  const unreachableReason =
+    result?.status === 'unreachable'
+      ? hasJumpChain(chart.worlds, origin, destination, ship.jumpRating)
+        ? 'Jump range is sufficient, but current fuel and refueling constraints prevent a passage.'
+        : `No chain of jumps reaches the destination at Jump-${ship.jumpRating}.`
+      : '';
   const status = !origin
     ? 'Choose an origin to begin.'
     : !destination
       ? `Departing ${worldById(origin).name}. Choose a destination.`
-      : 'Destination unreachable with this ship and available fuel sources.';
+      : `Destination unreachable. ${unreachableReason}`;
 
   function selectChart(next: Subsector) {
     setOrigin('');
@@ -586,7 +596,7 @@ export function PassageThree() {
                   </h3>
                   <p>
                     {origin && destination
-                      ? 'No passage is possible with these vessel particulars and local fuel sources. Review jump range, fuel aboard and scooping equipment, or choose another destination.'
+                      ? unreachableReason
                       : 'Choose your worlds above, or inspect one on the chart and set it as an endpoint.'}
                   </p>
                   {chart === demoChart && (

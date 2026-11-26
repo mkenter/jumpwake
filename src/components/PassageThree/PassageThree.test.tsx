@@ -78,7 +78,7 @@ describe('applied vessel and passage integration', () => {
     expect(document.querySelectorAll('[data-route-leg]')).toHaveLength(0);
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
     expect(manifest).toHaveTextContent(
-      'Review jump range, fuel aboard and scooping equipment',
+      'No chain of jumps reaches the destination at Jump-1',
     );
     expect(screen.getByRole('combobox', { name: 'Origin' })).toHaveValue(
       'aster',
@@ -116,6 +116,9 @@ describe('applied vessel and passage integration', () => {
         .initialFuelTons,
     ).toBe(13);
     await edit();
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Fuel scoops fitted' }),
+    );
     await user.clear(
       screen.getByRole('spinbutton', { name: 'Jump fuel aboard' }),
     );
@@ -146,8 +149,9 @@ describe('applied vessel and passage integration', () => {
     );
     await apply();
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Destination unreachable',
+      'Jump range is sufficient, but current fuel and refueling constraints prevent a passage.',
     );
+    expect(within(manifest).queryAllByRole('listitem')).toHaveLength(0);
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Destination' }),
       'cinder',
