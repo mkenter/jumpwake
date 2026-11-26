@@ -53,7 +53,6 @@ describe('T5 tab import', () => {
     `${header}\n${row()}\n${row()}`,
     `${header}\n${row('0001')}`,
     `${header}\n${row('3341')}`,
-    `${header}\n0101\tName\t???????-?\t???`,
     `${header}\n0101\tName\tA867A99-C\t`,
     `${header}\n${row()}\tunexpected`,
     '\uFFFD',
@@ -71,5 +70,27 @@ describe('T5 tab import', () => {
       ok: false,
       errors: [expect.stringContaining('Line 3: Hex')],
     });
+  });
+});
+
+describe('world profile observations', () => {
+  it('preserves unknowns separately from zero and rejects malformed hydrographics', () => {
+    const result = parseSubsectors(`${header}\n0101\tUnknown\t?0?0???-?\t?0?`);
+    expect(result.ok).toBe(true);
+    if (result.ok)
+      expect(result.charts[0]!.worlds[0]).toMatchObject({
+        starport: '?',
+        gasGiant: null,
+        facts: {
+          size: 0,
+          atmosphere: null,
+          hydrographics: 0,
+          belts: 0,
+          gasGiants: null,
+        },
+      });
+    expect(parseSubsectors(`${header}\n0101\tBad\tA00B000-0\t000`).ok).toBe(
+      false,
+    );
   });
 });

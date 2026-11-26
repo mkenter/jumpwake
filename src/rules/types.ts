@@ -14,6 +14,7 @@ export interface TravelRules<S extends RouteSystem> {
   readonly jumpFuelCapacityTons: number;
   readonly initialFuelTons: number;
   validateSystem(system: S): void;
+  canVisit?(system: S): boolean;
   jumpFuelTons(distance: number): number;
   fuelSources(system: S): readonly FuelSource[];
 }

@@ -196,30 +196,42 @@ export function PassageThree() {
   const distance = passage?.totalDistance ?? 0;
   const unreachableReason = useMemo(() => {
     const failedLeg = result?.status === 'unreachable' ? result.failedLeg : -1;
-    return result?.status === 'unreachable'
-      ? failedLeg >= 0 && (stopsRequired.length > 0 || mode === 'direct')
-        ? (() => {
-            const from =
-              failedLeg === 0 ? origin : stopsRequired[failedLeg - 1]!;
-            const to = [...stopsRequired, destination][failedLeg]!;
-            const fromWorld = worlds.find((world) => world.id === from)!;
-            const toWorld = worlds.find((world) => world.id === to)!;
-            const distance = hexDistance(
-              toAxial(fromWorld.hex),
-              toAxial(toWorld.hex),
-            );
-            const geometryValid =
-              mode === 'direct'
-                ? distance > 0 &&
-                  distance <= ship.jumpRating &&
-                  rules.jumpFuelTons(distance) <= ship.jumpFuelCapacityTons
-                : hasJumpChain(chart.worlds, from, to, ship.jumpRating);
-            return `Leg ${failedLeg + 1}: ${fromWorld.name} to ${toWorld.name}. ${geometryValid ? 'Available fuel and refueling cannot support this leg.' : 'No valid jump route is within the ship’s range.'} Edit the itinerary to repair it.`;
-          })()
-        : hasJumpChain(chart.worlds, origin, destination, ship.jumpRating)
-          ? 'Jump range is sufficient, but current fuel and refueling constraints prevent a passage.'
-          : `No chain of jumps reaches the destination at Jump-${ship.jumpRating}.`
+    const uncertainty = chart.worlds.some(
+      (world) => world.starport === '?' || world.gasGiant === null,
+    )
+      ? ' Some fuel availability is unknown and is not assumed available.'
       : '';
+    const reason =
+      result?.status === 'unreachable'
+        ? failedLeg >= 0 && (stopsRequired.length > 0 || mode === 'direct')
+          ? (() => {
+              const from =
+                failedLeg === 0 ? origin : stopsRequired[failedLeg - 1]!;
+              const to = [...stopsRequired, destination][failedLeg]!;
+              const fromWorld = worlds.find((world) => world.id === from)!;
+              const toWorld = worlds.find((world) => world.id === to)!;
+              const distance = hexDistance(
+                toAxial(fromWorld.hex),
+                toAxial(toWorld.hex),
+              );
+              const geometryValid =
+                mode === 'direct'
+                  ? distance > 0 &&
+                    distance <= ship.jumpRating &&
+                    rules.jumpFuelTons(distance) <= ship.jumpFuelCapacityTons
+                  : hasJumpChain(chart.worlds, from, to, ship.jumpRating);
+              return `Leg ${failedLeg + 1}: ${fromWorld.name} to ${toWorld.name}. ${geometryValid ? 'Available fuel and refueling cannot support this leg.' : 'No valid jump route is within the ship’s range.'} Edit the itinerary to repair it.`;
+            })()
+          : hasJumpChain(chart.worlds, origin, destination, ship.jumpRating)
+            ? 'Jump range is sufficient, but current fuel and refueling constraints prevent a passage.'
+            : `No chain of jumps reaches the destination at Jump-${ship.jumpRating}.`
+        : '';
+    const restriction = chart.worlds.some(
+      (world) => world.facts?.travelProhibited,
+    )
+      ? ' Referee travel prohibitions are enforced.'
+      : '';
+    return reason ? reason + uncertainty + restriction : reason;
   }, [
     result,
     stopsRequired,

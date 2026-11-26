@@ -1,4 +1,5 @@
 import type { StarSystem } from '../rules/classicTraveller1981';
+import type { WorldFacts } from '../rules/worldFacts';
 import { EMBER_REACH } from '../data/emberReach';
 export type ChartWorld = StarSystem & {
   readonly note?: string;
@@ -25,6 +26,7 @@ const ehex = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 export function parseSubsectors(
   text: string,
   source = 'Local file',
+  options: { legacy?: boolean } = {},
 ): ImportResult {
   const errors: string[] = [];
   if (new TextEncoder().encode(text).length > MAX_FILE_BYTES)
@@ -87,16 +89,52 @@ export function parseSubsectors(
       fail('Hex must be 0101–3240 (columns 01–32, rows 01–40).');
     if (seen.has(hex)) fail(`Duplicate coordinates ${hex}.`);
     seen.add(hex);
-    if (!/^[ABCDEX][0-9A-HJ-NP-Z]{6}-[0-9A-HJ-NP-Z]$/.test(uwp))
+    if (!/^[ABCDEX?][0-9A-HJ-NP-Z?]{6}-[0-9A-HJ-NP-Z?]$/.test(uwp))
       fail(
-        'UWP requires a known A–E/X starport and seven eHex values, e.g. A867A99-C; unknown fuel data cannot be routed.',
+        'UWP requires an A–E/X starport or ? and seven eHex values or ?, e.g. A867A99-C.',
       );
-    if (!/^[0-9][0-9A-HJ-NP-Z]{2}$/.test(pbg))
+    if (!/^[0-9?][0-9A-HJ-NP-Z?]{2}$/.test(pbg))
       fail(
-        'PBG requires a population digit and belt/gas-giant eHex values, e.g. 503; unknown gas giants cannot be routed.',
+        'PBG requires a population digit and belt/gas-giant eHex values or ?, e.g. 503.',
       );
+    if (!options.legacy && uwp[3] !== '?' && ehex.indexOf(uwp[3] ?? '') > 10)
+      fail('Hydrographics must be 0–A or unknown.');
+    if (
+      !options.legacy &&
+      data.Zone &&
+      !['A', 'R', 'G', '-', '?'].includes(data.Zone)
+    )
+      fail('Zone must be A, R, G, -, or empty.');
     if (!data.Name) fail('Name must be supplied.');
     if (errors.length !== before) return;
+    const value = (code: string | undefined) =>
+      code === '?' || !code ? null : ehex.indexOf(code);
+    const facts: WorldFacts = {
+      size: value(uwp[1]),
+      atmosphere: value(uwp[2]),
+      hydrographics: ehex.indexOf(uwp[3] ?? '') > 10 ? null : value(uwp[3]),
+      population: value(uwp[4]),
+      populationMultiplier: value(pbg[0]),
+      government: value(uwp[5]),
+      law: value(uwp[6]),
+      techLevel: value(uwp[8]),
+      belts: value(pbg[1]),
+      gasGiants: value(pbg[2]),
+      bases:
+        !data.Bases || data.Bases === '?'
+          ? null
+          : data.Bases === '-'
+            ? []
+            : [...data.Bases],
+      travelZone:
+        data.Zone === 'A'
+          ? 'amber'
+          : data.Zone === 'R'
+            ? 'red'
+            : data.Zone === 'G' || data.Zone === '-'
+              ? 'none'
+              : null,
+    };
     const index = Math.floor((row - 1) / 10) * 4 + Math.floor((column - 1) / 8);
     const worlds = groups.get(index) ?? [];
     worlds.push({
@@ -104,7 +142,8 @@ export function parseSubsectors(
       name: data.Name!,
       hex: { column: ((column - 1) % 8) + 1, row: ((row - 1) % 10) + 1 },
       starport: uwp[0] as StarSystem['starport'],
-      gasGiant: ehex.indexOf(pbg[2]!) > 0,
+      gasGiant: facts.gasGiants === null ? null : facts.gasGiants > 0,
+      facts,
       sourceHex: hex,
       metadata: data,
     });

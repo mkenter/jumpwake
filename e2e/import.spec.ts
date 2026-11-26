@@ -219,3 +219,30 @@ test('imports a dropped chart and preserves it when a drop is invalid', async ({
   ]);
   await expect(page.getByText('Drop one chart file at a time.')).toBeVisible();
 });
+
+test('inspection distinguishes unknown fuel and advisory zones', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByText('Chart bureau ·').click();
+  await page.getByLabel('Load navigation chart').setInputFiles({
+    name: 'unknown.tab',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(
+      'Hex\tName\tUWP\tPBG\tZone\n0101\tMystery\t?0?0???-?\t?0?\tR\n0102\tPort\tA000000-0\t000\t\n',
+    ),
+  });
+  await page.getByRole('button', { name: 'Chart', exact: true }).click();
+  await page.locator('[data-world="hex-0101"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Main world size: Belt')).toBeVisible();
+  await expect(page.getByText('Travel zone: red (advisory)')).toBeVisible();
+  await expect(
+    page.getByText(/Some fuel availability is unknown/),
+  ).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'Chart', exact: true }).click();
+  await page.locator('[data-world="hex-0101"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Main world size: Belt')).toBeVisible();
+});

@@ -24,7 +24,7 @@ export function restoreChart(): ImportedChart | null {
       typeof value.selected !== 'string'
     )
       return null;
-    const result = parseSubsectors(value.text, value.source);
+    const result = parseSubsectors(value.text, value.source, { legacy: true });
     if (
       !result.ok ||
       !result.charts.some((chart) => chart.position === value.selected)

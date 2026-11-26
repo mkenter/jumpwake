@@ -193,6 +193,7 @@ export function createRouter<S extends RouteSystem>(
       const distance = hexDistance(p, q);
       const tons = consumption[distance - 1];
       return i !== j &&
+        (rules.canVisit?.(systems[j]!) ?? true) &&
         distance <= maxJumpDistance &&
         tons !== undefined &&
         tons <= capacity
@@ -244,6 +245,8 @@ export function createRouter<S extends RouteSystem>(
         if (index === undefined) throw new Error('Unknown system ID');
         return index;
       });
+      if (!(rules.canVisit?.(systems[origin]!) ?? true))
+        return { status: 'unreachable', originId, destinationId, failedLeg: 0 };
       const stateWidth = systems.length * width;
       const labels: (Label | undefined)[] = Array.from({
         length: stateWidth * (targets.length + 1),

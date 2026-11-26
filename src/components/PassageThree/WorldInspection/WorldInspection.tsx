@@ -1,7 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import type { TravelRules } from '../../../rules/types';
-import type { StarSystem } from '../../../rules/classicTraveller1981';
+import {
+  describeWorldFacts,
+  portFacilities,
+  type StarSystem,
+} from '../../../rules/classicTraveller1981';
 import { address, describeFuel, type PresentedWorld } from '../presentation';
 import styles from './WorldInspection.module.css';
 
@@ -85,6 +89,32 @@ export function WorldInspection({
           Local {address(world)} · Sector {world.sourceHex}
         </p>
       )}
+      <p>Port facilities: {portFacilities(world.starport)}</p>
+      {world.facts && (
+        <div>
+          <p>Main world size: {describeWorldFacts(world.facts).size}</p>
+          <p>Hydrographics: {describeWorldFacts(world.facts).hydrographics}</p>
+          <p>
+            Gas giants: {world.facts.gasGiants ?? 'Unknown'} · Bases:{' '}
+            {world.facts.bases === null
+              ? 'Unknown'
+              : world.facts.bases.length === 0
+                ? 'None'
+                : world.facts.bases.join(', ')}
+          </p>
+          <p>
+            Travel zone: {world.facts.travelZone ?? 'Unknown'}
+            {world.facts.travelZone === 'amber' ||
+            world.facts.travelZone === 'red'
+              ? ' (advisory)'
+              : ''}
+          </p>
+          {world.facts.travelProhibited && <p>Travel prohibited by referee</p>}
+          {!!world.facts.refereeOverrides?.length && (
+            <p>Referee overrides: {world.facts.refereeOverrides.join(', ')}</p>
+          )}
+        </div>
+      )}
       {world.metadata && (
         <dl>
           {Object.entries(world.metadata)
@@ -99,7 +129,12 @@ export function WorldInspection({
       )}
       <p className={styles.fuel}>
         <span>Local fuel</span>
-        {describeFuel(rules.fuelSources(world))}
+        {rules.fuelSources(world).length === 0 &&
+        (world.starport === '?' || world.gasGiant === null)
+          ? 'No confirmed local fuel'
+          : describeFuel(rules.fuelSources(world))}
+        {(world.starport === '?' || world.gasGiant === null) &&
+          ' · Some fuel availability is unknown'}
       </p>
       <div className={styles.actions}>
         <button
