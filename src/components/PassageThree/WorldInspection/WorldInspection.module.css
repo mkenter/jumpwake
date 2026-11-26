@@ -1,4 +1,13 @@
 .inspector {
+  position: fixed;
+  z-index: 10;
+  top: 16px;
+  right: 24px;
+  width: clamp(280px, calc(25vw + 40px), 340px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  background: var(--paper);
+  box-shadow: 0 8px 30px #35424833;
   margin-bottom: 20px;
   padding: 16px;
   border-top: 3px double var(--gold-line);

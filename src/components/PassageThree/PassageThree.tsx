@@ -286,28 +286,39 @@ export function PassageThree({
     setInspection({ id, trigger });
   }
 
-  function closeInspection() {
+  function closeInspection(fallback?: HTMLElement | null) {
     const trigger = inspection?.trigger;
     if (compact && trigger) {
       setView(trigger.closest('#passage-manifest') ? 'manifest' : 'chart');
     }
     setInspection(null);
     setHighlight(null);
-    requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
+    requestAnimationFrame(() =>
+      (trigger?.isConnected ? trigger : fallback)?.focus({
+        preventScroll: true,
+      }),
+    );
   }
 
   function useWorld(endpoint: 'origin' | 'destination' | 'waypoint') {
     if (!inspection) return;
-    const scrollX = window.scrollX;
-    const scrollY = window.scrollY;
+    const trigger = inspection.trigger;
+    const chartTrigger = trigger.closest('#passage-chart') ? trigger : null;
+    const top = chartTrigger?.getBoundingClientRect().top;
     if (endpoint === 'origin') setOrigin(inspection.id);
     else if (endpoint === 'destination') setDestination(inspection.id);
     else
       setStopsRequired((previous) =>
         previous.length < 30 ? [...previous, inspection.id] : previous,
       );
-    closeInspection();
-    requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
+    closeInspection(
+      endpoint === 'origin' ? originRef.current : destinationRef.current,
+    );
+    requestAnimationFrame(() => {
+      if (chartTrigger?.isConnected && top !== undefined) {
+        window.scrollBy(0, chartTrigger.getBoundingClientRect().top - top);
+      }
+    });
   }
 
   function sample(target: string) {
@@ -352,7 +363,7 @@ export function PassageThree({
       )}
       hasPassage={Boolean(passage)}
       rules={rules}
-      onClose={closeInspection}
+      onClose={() => closeInspection()}
       onUseWorld={useWorld}
       canAddWaypoint={stopsRequired.length < 30}
       mode={mode}

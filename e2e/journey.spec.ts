@@ -438,12 +438,20 @@ for (const width of [390, 1440]) {
       await page.keyboard.press('Enter');
       const button = page.getByRole('button', { name: action, exact: true });
       await button.scrollIntoViewIfNeeded();
-      const before = await page.evaluate<number>('scrollY');
+      const before = await world.evaluate(
+        (element) => element.getBoundingClientRect().top,
+      );
       await button.click();
       await expect(world).toBeFocused();
-      expect(
-        Math.abs((await page.evaluate<number>('scrollY')) - before),
-      ).toBeLessThan(3);
+      await expect
+        .poll(async () =>
+          Math.abs(
+            (await world.evaluate(
+              (element) => element.getBoundingClientRect().top,
+            )) - before,
+          ),
+        )
+        .toBeLessThan(3);
       await expect(chart).toBeVisible();
     };
     await choose('Aster Quay', 'Set origin');
@@ -464,3 +472,34 @@ for (const width of [390, 1440]) {
     );
   });
 }
+
+test('desktop inspection remains visible and manifest selections restore focus', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 700 });
+  await page.goto('/');
+  await page.getByRole('combobox', { name: 'Origin' }).selectOption('aster');
+  await page
+    .getByRole('combobox', { name: 'Destination' })
+    .selectOption('cinder');
+  const world = page.getByRole('button', { name: /^Inspect Last Ember,/ });
+  await world.scrollIntoViewIfNeeded();
+  await world.click();
+  const inspector = page.getByRole('complementary', {
+    name: 'World inspection',
+  });
+  const heading = inspector.getByRole('heading');
+  await expect(heading).toBeFocused();
+  const bounds = await heading.evaluate((element) =>
+    element.getBoundingClientRect().toJSON(),
+  );
+  expect(bounds.top).toBeGreaterThanOrEqual(0);
+  expect(bounds.bottom).toBeLessThanOrEqual(700);
+  await inspector.getByRole('button', { name: 'Close world details' }).click();
+  const event = page.getByRole('button', { name: /^Inspect event 2,/ });
+  await event.click();
+  await inspector
+    .getByRole('button', { name: 'Set origin', exact: true })
+    .click();
+  await expect(page.getByRole('combobox', { name: 'Origin' })).toBeFocused();
+});
