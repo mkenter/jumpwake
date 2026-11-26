@@ -176,7 +176,22 @@ test('normal-motion reveal and sticky navigation retain focus and scroll', async
 test('operational particulars control routing and remain session-only', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
+  const expectSummaryRow = async () => {
+    const heading = (await page
+      .getByRole('heading', { name: 'Vessel particulars' })
+      .boundingBox())!;
+    const edit = (await page
+      .getByRole('button', { name: 'Edit particulars' })
+      .boundingBox())!;
+    const notes = (await page
+      .getByText(/Route-only vessel:|Operational assessment applied/)
+      .boundingBox())!;
+    expect(edit.y).toBeLessThan(heading.y + heading.height);
+    expect(notes.y).toBeGreaterThanOrEqual(edit.y + edit.height);
+  };
+  await expectSummaryRow();
   await page.getByRole('button', { name: 'Edit particulars' }).click();
   await page.getByLabel('Assess operational particulars').check();
   await page.getByLabel('Jump drive letter', { exact: true }).fill('A');
@@ -191,6 +206,7 @@ test('operational particulars control routing and remain session-only', async ({
   ).toBeVisible();
   await page.getByRole('button', { name: 'Apply particulars' }).click();
   await expect(page.getByLabel('Active vessel')).toContainText('Jump-1');
+  await expectSummaryRow();
   await expect(
     page.getByText(/Operational details are not saved/),
   ).toBeVisible();

@@ -274,17 +274,6 @@ export function VesselParticulars({
             {ship.streamlined ? 'Streamlined' : 'Unstreamlined'}
           </span>
         </div>
-        <p>
-          {vessel.design
-            ? 'Operational assessment applied for this visit. Reapply after changing the catalog.'
-            : 'Route-only vessel: operational particulars are incomplete.'}
-        </p>
-        {vessel.design && (
-          <p>
-            Operational details are not saved or included in shared passages;
-            the route settings are retained.
-          </p>
-        )}
         <button
           ref={editRef}
           type="button"
@@ -318,6 +307,19 @@ export function VesselParticulars({
           {open ? 'Close particulars' : 'Edit particulars'}
           <span aria-hidden="true">{open ? '−' : '+'}</span>
         </button>
+        <div className={styles.notes}>
+          <p>
+            {vessel.design
+              ? 'Operational assessment applied for this visit. Reapply after changing the catalog.'
+              : 'Route-only vessel: operational particulars are incomplete.'}
+          </p>
+          {vessel.design && (
+            <p>
+              Operational details are not saved or included in shared passages;
+              the route settings are retained.
+            </p>
+          )}
+        </div>
       </div>
       {saveUnavailable && (
         <p className={styles.saveNote}>
@@ -512,12 +514,17 @@ export function VesselParticulars({
                     <select
                       id="vessel-jumpRating"
                       disabled={operational}
-                      value={draft.jumpRating}
+                      value={
+                        operational
+                          ? String(assessment.effectiveJump ?? '')
+                          : draft.jumpRating
+                      }
                       onChange={(event) => {
                         setDraft({ ...draft, jumpRating: event.target.value });
                         setRestored(false);
                       }}
                     >
+                      {operational && <option value="">Unknown</option>}
                       {[1, 2, 3, 4, 5, 6].map((rating) => (
                         <option key={rating} value={rating}>
                           Jump-{rating}

@@ -164,6 +164,9 @@ describe('VesselParticulars', () => {
     await user.click(edit);
     await user.click(screen.getByLabelText('Assess operational particulars'));
     expect(screen.getByText(/Assessment: incomplete/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: 'Jump rating' }),
+    ).toHaveDisplayValue('Unknown');
     await user.type(screen.getByLabelText('Jump drive letter'), 'A');
     await user.type(
       screen.getByLabelText('Maneuver drive letter (enter none if absent)'),
@@ -176,6 +179,14 @@ describe('VesselParticulars', () => {
       '80',
     );
     expect(screen.getByText(/Assessment: assessed/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: 'Jump rating' }),
+    ).toHaveDisplayValue('Jump-1');
+    await user.clear(screen.getByLabelText('Computer model'));
+    expect(
+      screen.getByRole('combobox', { name: 'Jump rating' }),
+    ).toHaveDisplayValue('Unknown');
+    await user.type(screen.getByLabelText('Computer model'), '1');
     await user.click(screen.getByRole('button', { name: 'Apply particulars' }));
     expect(onApply).toHaveBeenCalledWith(
       expect.objectContaining({

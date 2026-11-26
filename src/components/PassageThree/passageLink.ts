@@ -85,7 +85,10 @@ export function decodePassage(encoded: string): PassageLink | null {
     )
       return null;
     validateShip(value.vessel.ship, value.vessel.state);
-    return value;
+    return {
+      ...value,
+      vessel: { ship: value.vessel.ship, state: value.vessel.state },
+    };
   } catch {
     return null;
   }

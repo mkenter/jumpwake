@@ -34,6 +34,16 @@ describe('passage links', () => {
     };
     expect(decodePassage(encodePassage(operational))).toEqual(link);
   });
+  it('discards untrusted operational particulars in incoming links', () => {
+    for (const design of [{}, { manualPerformance: { jump: null } }]) {
+      const payload = { ...link, vessel: { ...link.vessel, design } };
+      const encoded = btoa(JSON.stringify(payload))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+      expect(decodePassage(encoded)).toEqual(link);
+    }
+  });
   it('round trips ordered stops and the itinerary mode', () => {
     const itinerary: PassageLink = {
       ...link,
