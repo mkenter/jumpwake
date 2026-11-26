@@ -1,3 +1,5 @@
+/// <reference types="node" />
+import assert from 'node:assert/strict';
 import { describe, expect, it } from 'vitest';
 import { createRouter as createEngineRouter } from './routing';
 import {
@@ -224,9 +226,12 @@ function referenceDetailed(
     length: systems.length * width,
   });
   labels[start * width + state.initialFuelTons] = { score: [0, 0, 0], key: [] };
+  // Keep cost/jumps/distance as factual totals; rank them independently.
+  const order = preference === 'fewest-jumps' ? [1, 0, 2] : [0, 1, 2];
+  const distances = systems.map((a) =>
+    systems.map((b) => displayDistance(a.hex, b.hex)),
+  );
   const less = (a: ReferenceLabel, b: ReferenceLabel) => {
-    // Keep cost/jumps/distance as factual totals; rank them independently.
-    const order = preference === 'fewest-jumps' ? [1, 0, 2] : [0, 1, 2];
     for (const i of order) {
       if (a.score[i] !== b.score[i]) return a.score[i]! < b.score[i]!;
     }
@@ -264,7 +269,7 @@ function referenceDetailed(
             key: label.key,
           });
         for (let j = 0; j < systems.length; j++) {
-          const distance = displayDistance(s.hex, systems[j]!.hex);
+          const distance = distances[i]![j]!;
           const needed = (ship.displacementTons / 10) * distance;
           if (distance >= 1 && distance <= ship.jumpRating && fuel >= needed)
             relax(j * width + fuel - needed, {
@@ -353,29 +358,31 @@ function expectBalanced(
   let distance = 0;
   let jumps = 0;
   for (const [i, event] of result.events.entries()) {
-    expect(location).not.toBe(result.destinationId);
-    expect(event.fuelBeforeTons).toBe(fuel);
+    assert.notEqual(location, result.destinationId);
+    assert.equal(event.fuelBeforeTons, fuel);
     if (event.kind === 'refuel') {
       const stop = byId.get(location)!;
-      expect(event.systemId).toBe(location);
-      expect(event.tons).toBeGreaterThan(0);
-      expect(event.grade).toBe('unrefined');
+      assert.equal(event.systemId, location);
+      assert.ok(event.tons > 0);
+      assert.equal(event.grade, 'unrefined');
       const free = stop.gasGiant && ship.hasFuelScoops && ship.streamlined;
-      expect(event.source).toBe(free ? 'gas-giant' : 'starport');
-      expect(free || 'ABCD'.includes(stop.starport)).toBe(true);
-      expect(event.creditsPerTon).toBe(free ? 0 : 100);
-      expect(event.costCredits).toBe(event.tons * event.creditsPerTon);
-      expect(result.events[i + 1]?.kind).toBe('jump');
+      assert.equal(event.source, free ? 'gas-giant' : 'starport');
+      assert.equal(free || 'ABCD'.includes(stop.starport), true);
+      assert.equal(event.creditsPerTon, free ? 0 : 100);
+      assert.equal(event.costCredits, event.tons * event.creditsPerTon);
+      assert.equal(result.events[i + 1]?.kind, 'jump');
       fuel += event.tons;
       cost += event.costCredits;
     } else {
-      expect(event.fromId).toBe(location);
-      expect(event.distance).toBe(
+      assert.equal(event.fromId, location);
+      assert.equal(
+        event.distance,
         displayDistance(byId.get(location)!.hex, byId.get(event.toId)!.hex),
       );
-      expect(event.distance).toBeGreaterThanOrEqual(1);
-      expect(event.distance).toBeLessThanOrEqual(ship.jumpRating);
-      expect(event.fuelConsumedTons).toBe(
+      assert.ok(event.distance >= 1);
+      assert.ok(event.distance <= ship.jumpRating);
+      assert.equal(
+        event.fuelConsumedTons,
         event.distance * (ship.displacementTons / 10),
       );
       location = event.toId;
@@ -383,17 +390,20 @@ function expectBalanced(
       distance += event.distance;
       jumps++;
     }
-    expect(event.fuelAfterTons).toBe(fuel);
-    expect(fuel).toBeGreaterThanOrEqual(0);
-    expect(fuel).toBeLessThanOrEqual(ship.jumpFuelCapacityTons);
+    assert.equal(event.fuelAfterTons, fuel);
+    assert.ok(fuel >= 0);
+    assert.ok(fuel <= ship.jumpFuelCapacityTons);
   }
-  expect(location).toBe(result.destinationId);
-  expect([cost, jumps, distance, fuel]).toEqual([
-    result.totalCostCredits,
-    result.jumpCount,
-    result.totalDistance,
-    result.fuelRemainingTons,
-  ]);
+  assert.equal(location, result.destinationId);
+  assert.deepEqual(
+    [cost, jumps, distance, fuel],
+    [
+      result.totalCostCredits,
+      result.jumpCount,
+      result.totalDistance,
+      result.fuelRemainingTons,
+    ],
+  );
 }
 
 it('keeps every fixture itinerary balanced without redundant refueling', () => {
@@ -846,6 +856,8 @@ it.each(preferences)(
       }
     }
   },
+  // This exhaustive case has previously exceeded Vitest’s default timeout in CI.
+  15000,
 );
 
 it('handles large hulls and nonaligned fuel on a full 80-system subsector', () => {
