@@ -1,0 +1,17 @@
+.panel {
+  padding: 1rem;
+  background: #eee;
+  color: #111;
+}
+.panel summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.fields label {
+  display: grid;
+}
