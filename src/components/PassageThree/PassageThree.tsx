@@ -293,18 +293,21 @@ export function PassageThree({
     }
     setInspection(null);
     setHighlight(null);
-    requestAnimationFrame(() => trigger?.focus({ preventScroll: compact }));
+    requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
   }
 
-  function useWorld(endpoint: 'origin' | 'destination') {
+  function useWorld(endpoint: 'origin' | 'destination' | 'waypoint') {
     if (!inspection) return;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
     if (endpoint === 'origin') setOrigin(inspection.id);
-    else setDestination(inspection.id);
-    setInspection(null);
-    setHighlight(null);
-    requestAnimationFrame(() =>
-      (endpoint === 'origin' ? originRef : destinationRef).current?.focus(),
-    );
+    else if (endpoint === 'destination') setDestination(inspection.id);
+    else
+      setStopsRequired((previous) =>
+        previous.length < 30 ? [...previous, inspection.id] : previous,
+      );
+    closeInspection();
+    requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
   }
 
   function sample(target: string) {
@@ -351,6 +354,8 @@ export function PassageThree({
       rules={rules}
       onClose={closeInspection}
       onUseWorld={useWorld}
+      canAddWaypoint={stopsRequired.length < 30}
+      mode={mode}
     />
   ) : null;
 
@@ -438,55 +443,86 @@ export function PassageThree({
               </select>
             </label>
           </div>
-          <fieldset>
-            <legend>Itinerary</legend>
-            <label>
-              Routing mode{' '}
-              <select
-                value={mode}
-                onChange={(event) =>
-                  setMode(event.target.value as 'waypoints' | 'direct')
-                }
-              >
-                <option value="waypoints">
-                  Required stops (automatic routes between)
-                </option>
-                <option value="direct">Specified successive jumps</option>
-              </select>
-            </label>
-            {stopsRequired.map((stop, index) => (
-              <div key={index}>
-                <label>
-                  Stop {index + 1}{' '}
-                  <select
-                    value={stop}
-                    onChange={(event) =>
-                      setStopsRequired((previous) =>
-                        previous.map((id, i) =>
-                          i === index ? event.target.value : id,
-                        ),
-                      )
-                    }
-                  >
-                    {worlds.map((world) => (
-                      <option key={world.id} value={world.id}>
-                        {world.name} · {address(world)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setStopsRequired((previous) =>
-                      previous.filter((_, i) => i !== index),
-                    )
-                  }
-                >
-                  Remove stop {index + 1}
-                </button>
+          <div className={styles.itinerary}>
+            {stopsRequired.length > 0 && (
+              <div>
+                <p>
+                  {mode === 'direct'
+                    ? 'Exact successive jumps'
+                    : 'Required waypoints'}{' '}
+                  · in travel order
+                </p>
+                <ol className={styles.requiredStops}>
+                  {stopsRequired.map((stop, index) => (
+                    <li key={index}>
+                      <label>
+                        <span className={styles.sr}>Stop {index + 1}</span>
+                        <select
+                          value={stop}
+                          onChange={(event) =>
+                            setStopsRequired((previous) =>
+                              previous.map((id, i) =>
+                                i === index ? event.target.value : id,
+                              ),
+                            )
+                          }
+                        >
+                          {worlds.map((world) => (
+                            <option key={world.id} value={world.id}>
+                              {world.name} · {address(world)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        type="button"
+                        disabled={index === 0}
+                        aria-label={`Move stop ${index + 1} earlier`}
+                        onClick={() =>
+                          setStopsRequired((previous) => {
+                            const next = [...previous];
+                            [next[index - 1], next[index]] = [
+                              next[index]!,
+                              next[index - 1]!,
+                            ];
+                            return next;
+                          })
+                        }
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        disabled={index === stopsRequired.length - 1}
+                        aria-label={`Move stop ${index + 1} later`}
+                        onClick={() =>
+                          setStopsRequired((previous) => {
+                            const next = [...previous];
+                            [next[index], next[index + 1]] = [
+                              next[index + 1]!,
+                              next[index]!,
+                            ];
+                            return next;
+                          })
+                        }
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setStopsRequired((previous) =>
+                            previous.filter((_, i) => i !== index),
+                          )
+                        }
+                      >
+                        Remove stop {index + 1}
+                      </button>
+                    </li>
+                  ))}
+                </ol>
               </div>
-            ))}
+            )}
             <button
               type="button"
               disabled={stopsRequired.length >= 30 || worlds.length === 0}
@@ -496,7 +532,29 @@ export function PassageThree({
             >
               Add stop
             </button>
-          </fieldset>
+            <details>
+              <summary>Advanced routing</summary>
+              <label>
+                Routing mode{' '}
+                <select
+                  value={mode}
+                  onChange={(event) =>
+                    setMode(event.target.value as 'waypoints' | 'direct')
+                  }
+                >
+                  <option value="waypoints">
+                    Required stops (automatic routes between)
+                  </option>
+                  <option value="direct">Specified successive jumps</option>
+                </select>
+              </label>
+              <p>
+                {mode === 'direct'
+                  ? 'Each listed stop and the destination must be reached in one exact successive jump.'
+                  : 'The planner may choose intermediate worlds between required waypoints.'}
+              </p>
+            </details>
+          </div>
           <VesselParticulars
             vessel={vessel}
             catalog={catalog ? makeDriveCatalog(catalog) : exampleDriveCatalog}

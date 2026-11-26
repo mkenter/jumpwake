@@ -194,14 +194,16 @@ for (const [width, height] of [
     );
     await capture('selected-serein-inspection');
     if (width < 900) {
-      await inspector.getByRole('button', { name: 'Set destination' }).focus();
+      await inspector
+        .getByRole('button', { name: 'Add required waypoint' })
+        .focus();
       await page.keyboard.press('Tab');
       await expect(
         inspector.getByRole('button', { name: 'Close world details' }),
       ).toBeFocused();
       await page.keyboard.press('Shift+Tab');
       await expect(
-        inspector.getByRole('button', { name: 'Set destination' }),
+        inspector.getByRole('button', { name: 'Add required waypoint' }),
       ).toBeFocused();
     }
     await inspector
@@ -336,7 +338,7 @@ for (const [width, height] of [
     await page.keyboard.press('Space');
     await expect(inspector).toContainText('No local fuel');
     await inspector.getByRole('button', { name: 'Set destination' }).click();
-    await expect(destination).toBeFocused();
+    await expect(chartWorld('Last Ember')).toBeFocused();
     await expect(status).toContainText('Destination unreachable');
     await switchView('Manifest');
     await expect(manifest.getByRole('listitem')).toHaveCount(0);
@@ -405,6 +407,7 @@ test('repairs an infeasible specified itinerary', async ({ page }) => {
   await page
     .getByRole('combobox', { name: 'Destination' })
     .selectOption('cinder');
+  await page.getByText('Advanced routing').click();
   await page
     .getByRole('combobox', { name: 'Routing mode' })
     .selectOption('direct');
@@ -418,3 +421,46 @@ test('repairs an infeasible specified itinerary', async ({ page }) => {
   await page.getByRole('button', { name: 'Remove stop 1' }).click();
   await expect(page.getByRole('status')).toContainText('Leg 1');
 });
+
+for (const width of [390, 1440]) {
+  test(`chart selections preserve the viewport at ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/');
+    const chart = page.locator('#passage-chart');
+    const choose = async (name: string, action: string) => {
+      const world = chart.getByRole('button', {
+        name: new RegExp(`Inspect ${name},`),
+      });
+      await world.scrollIntoViewIfNeeded();
+      await world.focus();
+      await page.keyboard.press('Enter');
+      const button = page.getByRole('button', { name: action, exact: true });
+      await button.scrollIntoViewIfNeeded();
+      const before = await page.evaluate<number>('scrollY');
+      await button.click();
+      await expect(world).toBeFocused();
+      expect(
+        Math.abs((await page.evaluate<number>('scrollY')) - before),
+      ).toBeLessThan(3);
+      await expect(chart).toBeVisible();
+    };
+    await choose('Aster Quay', 'Set origin');
+    await choose('Cinder Rest', 'Set destination');
+    await choose('Brass Ledger', 'Add required waypoint');
+    await expect(page.getByRole('combobox', { name: 'Stop 1' })).toHaveValue(
+      'brass',
+    );
+    await page.getByRole('button', { name: 'Add stop', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Stop 2' }).selectOption('drift');
+    await page.getByRole('button', { name: 'Move stop 2 earlier' }).click();
+    await expect(page.getByRole('combobox', { name: 'Stop 1' })).toHaveValue(
+      'drift',
+    );
+    await page.getByRole('button', { name: 'Remove stop 1' }).click();
+    await expect(page.getByRole('combobox', { name: 'Stop 1' })).toHaveValue(
+      'brass',
+    );
+  });
+}

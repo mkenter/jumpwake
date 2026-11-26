@@ -20,7 +20,9 @@ type Props = {
   hasPassage: boolean;
   rules: TravelRules<StarSystem>;
   onClose: () => void;
-  onUseWorld: (endpoint: 'origin' | 'destination') => void;
+  onUseWorld: (endpoint: 'origin' | 'destination' | 'waypoint') => void;
+  canAddWaypoint: boolean;
+  mode: 'waypoints' | 'direct';
 };
 
 export function WorldInspection({
@@ -34,6 +36,8 @@ export function WorldInspection({
   rules,
   onClose,
   onUseWorld,
+  canAddWaypoint,
+  mode,
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -43,7 +47,7 @@ export function WorldInspection({
   useEffect(() => {
     const dialog = dialogRef.current;
     if (compact) dialog?.showModal();
-    headingRef.current?.focus({ preventScroll: compact });
+    headingRef.current?.focus({ preventScroll: true });
     return () => {
       dialog?.close();
     };
@@ -148,6 +152,14 @@ export function WorldInspection({
           onClick={() => onUseWorld('destination')}
         >
           {world.id === destination ? 'Current destination' : 'Set destination'}
+        </button>
+        <button
+          disabled={!canAddWaypoint}
+          onClick={() => onUseWorld('waypoint')}
+        >
+          {mode === 'direct'
+            ? 'Add successive jump stop'
+            : 'Add required waypoint'}
         </button>
       </div>
     </motion.div>

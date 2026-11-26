@@ -535,3 +535,37 @@ describe('copy passage', () => {
     expect(within(manifest).getAllByRole('listitem').length).toBeGreaterThan(0);
   });
 });
+
+describe('chart-first itinerary', () => {
+  it('adds repeated waypoints and reorders and removes them', async () => {
+    const user = userEvent.setup();
+    render(<PassageThree />);
+    const world = screen.getByRole('button', { name: /Inspect Brass Ledger,/ });
+    await user.click(world);
+    await user.click(
+      screen.getByRole('button', { name: 'Add required waypoint' }),
+    );
+    await user.click(world);
+    await user.click(
+      screen.getByRole('button', { name: 'Add required waypoint' }),
+    );
+    expect(screen.getByRole('combobox', { name: 'Stop 2' })).toHaveValue(
+      'brass',
+    );
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Stop 2' }),
+      'drift',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Move stop 2 earlier' }),
+    );
+    expect(screen.getByRole('combobox', { name: 'Stop 1' })).toHaveValue(
+      'drift',
+    );
+    await user.click(screen.getByRole('button', { name: 'Remove stop 1' }));
+    expect(screen.getByRole('combobox', { name: 'Stop 1' })).toHaveValue(
+      'brass',
+    );
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+  });
+});
