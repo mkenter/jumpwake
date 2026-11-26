@@ -179,17 +179,22 @@ test('operational particulars control routing and survive reload', async ({
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   const expectSummaryRow = async () => {
-    const heading = (await page
+    const positions = await page
       .getByRole('heading', { name: 'Vessel particulars' })
-      .boundingBox())!;
-    const edit = (await page
-      .getByRole('button', { name: 'Edit particulars' })
-      .boundingBox())!;
-    const notes = (await page
-      .getByText(/Route-only vessel:|Operational particulars retained/)
-      .boundingBox())!;
-    expect(edit.y).toBeLessThan(heading.y + heading.height);
-    expect(notes.y).toBeGreaterThanOrEqual(edit.y + edit.height);
+      .evaluate((heading) => {
+        const summary = heading.parentElement!;
+        const edit = summary.querySelector('button')!.getBoundingClientRect();
+        const notes = summary.querySelector('p')!.getBoundingClientRect();
+        const title = heading.getBoundingClientRect();
+        return {
+          titleBottom: title.bottom,
+          editTop: edit.top,
+          editBottom: edit.bottom,
+          notesTop: notes.top,
+        };
+      });
+    expect(positions.editTop).toBeLessThan(positions.titleBottom);
+    expect(positions.notesTop).toBeGreaterThanOrEqual(positions.editBottom);
   };
   await expectSummaryRow();
   await page.getByRole('button', { name: 'Edit particulars' }).click();
