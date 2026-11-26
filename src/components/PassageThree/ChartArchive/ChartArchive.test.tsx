@@ -78,6 +78,40 @@ function assertRoutePreserved() {
 }
 
 describe('chart file interactions', () => {
+  it('allows another import after forgetting during a pending read', async () => {
+    const { user, zone } = await setup();
+    fireEvent.drop(zone, {
+      dataTransfer: { files: [textFile('first.tab', chart)], types: ['Files'] },
+    });
+    await screen.findByText(/Source: first.tab/);
+
+    let finishRead!: (bytes: ArrayBuffer) => void;
+    const pending = textFile('pending.tab', chart);
+    Object.defineProperty(pending, 'arrayBuffer', {
+      value: () =>
+        new Promise<ArrayBuffer>((resolve) => (finishRead = resolve)),
+    });
+    fireEvent.drop(zone, {
+      dataTransfer: { files: [pending], types: ['Files'] },
+    });
+    expect(screen.getByLabelText('Load navigation chart')).toBeDisabled();
+    await user.click(
+      screen.getByRole('button', { name: 'Forget imported chart' }),
+    );
+    expect(screen.getByLabelText('Load navigation chart')).toBeEnabled();
+    expect(screen.queryByText('Reading chart…')).not.toBeInTheDocument();
+
+    await user.upload(
+      screen.getByLabelText('Load navigation chart'),
+      textFile('later.tab', chart),
+    );
+    await screen.findByText(/Source: later.tab/);
+    finishRead(new TextEncoder().encode(chart).buffer);
+    await waitFor(() =>
+      expect(screen.getByText(/Source: later.tab/)).toBeVisible(),
+    );
+  });
+
   it.each(['drop', 'picker'])(
     'imports the same valid file via %s',
     async (method) => {

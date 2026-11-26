@@ -176,6 +176,7 @@ export function ChartArchive({
         <button
           onClick={() => {
             ++request.current;
+            setLoading(false);
             onImport(null);
             setErrors([]);
             setStorageWarning(!forgetChart());
