@@ -120,3 +120,64 @@ test('shares bundled and imported passages across independent contexts', async (
   ).toBeVisible();
   await recipient.close();
 });
+
+test('shares operational particulars and referee overrides without catalog data', async ({
+  page,
+  context,
+  browser,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/');
+  const design = {
+    displacementTons: 100,
+    jumpDrive: 'A',
+    maneuverDrive: 'A',
+    powerPlant: 'A',
+    computer: '2',
+    tankageTons: 80,
+    streamlined: true,
+    custom: true,
+    manualPerformance: { jump: { rating: 1, provenance: 'Referee notes' } },
+  };
+  await page.evaluate(
+    (design) =>
+      localStorage.setItem(
+        'jumpwake.vessel',
+        JSON.stringify({
+          version: 2,
+          ship: {
+            displacementTons: 100,
+            jumpRating: 2,
+            jumpFuelCapacityTons: 27,
+            hasFuelScoops: true,
+            streamlined: true,
+          },
+          state: { initialFuelTons: 27 },
+          design,
+        }),
+      ),
+    design,
+  );
+  await page.reload();
+  await page.getByLabel('Origin').selectOption('aster');
+  await page.getByLabel('Destination').selectOption('cinder');
+  await page.getByRole('button', { name: 'Copy passage link' }).click();
+  const url = await page.evaluate(() =>
+    (
+      navigator as unknown as { clipboard: { readText(): Promise<string> } }
+    ).clipboard.readText(),
+  );
+  const recipient = await browser.newContext();
+  const other = await recipient.newPage();
+  await other.goto(url);
+  await expect(other.getByText(/Shared passage restored/)).toBeVisible();
+  await other.getByRole('button', { name: 'Edit particulars' }).click();
+  await expect(
+    other.getByLabel('Jump drive letter', { exact: true }),
+  ).toHaveValue('A');
+  await expect(other.getByLabel('Referee-customized design')).toBeChecked();
+  await expect(other.getByLabel(/Referee jump source/i)).toHaveValue(
+    'Referee notes',
+  );
+  await recipient.close();
+});

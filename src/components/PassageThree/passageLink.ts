@@ -1,13 +1,10 @@
 import { createRouter, type RoutingPreference } from '../../engine';
 import { demoChart, type Subsector } from '../../import/subsector';
-import {
-  createClassicTraveller1981Rules,
-  validateShip,
-} from '../../rules/classicTraveller1981';
-import type { Vessel } from './vessel';
+import { createClassicTraveller1981Rules } from '../../rules/classicTraveller1981';
+import { parseVessel, type Vessel } from './vessel';
 
 export interface PassageLink {
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   stops?: string[];
   mode?: 'waypoints' | 'direct';
   chart:
@@ -33,7 +30,14 @@ export function encodePassage(link: PassageLink): string {
   const bytes = new TextEncoder().encode(
     JSON.stringify({
       ...link,
-      vessel: { ship: link.vessel.ship, state: link.vessel.state },
+      vessel:
+        link.version === 3
+          ? {
+              ship: link.vessel.ship,
+              state: link.vessel.state,
+              design: link.vessel.design,
+            }
+          : { ship: link.vessel.ship, state: link.vessel.state },
     }),
   );
   return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''))
@@ -53,10 +57,10 @@ export function decodePassage(encoded: string): PassageLink | null {
       ),
     );
     if (
-      ![1, 2].includes(value.version) ||
+      ![1, 2, 3].includes(value.version) ||
       (value.version === 1 &&
         (value.stops !== undefined || value.mode !== undefined)) ||
-      (value.version === 2 &&
+      (value.version !== 1 &&
         (!Array.isArray(value.stops) ||
           value.stops.length > 30 ||
           value.stops.some(
@@ -84,11 +88,9 @@ export function decodePassage(encoded: string): PassageLink | null {
       !value.vessel?.state
     )
       return null;
-    validateShip(value.vessel.ship, value.vessel.state);
-    return {
-      ...value,
-      vessel: { ship: value.vessel.ship, state: value.vessel.state },
-    };
+    const vessel = parseVessel(value.vessel, value.version === 3);
+    if (!vessel) return null;
+    return { ...value, vessel };
   } catch {
     return null;
   }

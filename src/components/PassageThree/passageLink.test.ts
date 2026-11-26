@@ -27,22 +27,31 @@ describe('passage links', () => {
       false,
     );
   });
-  it('omits session-only operational particulars from shared links', () => {
-    const operational = {
+  it('preserves operational particulars in version 3 and rejects malformed overrides', () => {
+    const operational: PassageLink = {
       ...link,
-      vessel: { ...link.vessel, design: { jumpDrive: 'A' } },
+      version: 3,
+      stops: [],
+      mode: 'waypoints',
+      vessel: {
+        ...link.vessel,
+        design: {
+          custom: true,
+          jumpDrive: 'A',
+          manualPerformance: { jump: { rating: 2, provenance: 'Referee' } },
+        },
+      },
     };
-    expect(decodePassage(encodePassage(operational))).toEqual(link);
-  });
-  it('discards untrusted operational particulars in incoming links', () => {
-    for (const design of [{}, { manualPerformance: { jump: null } }]) {
-      const payload = { ...link, vessel: { ...link.vessel, design } };
-      const encoded = btoa(JSON.stringify(payload))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-      expect(decodePassage(encoded)).toEqual(link);
-    }
+    expect(decodePassage(encodePassage(operational))).toEqual(operational);
+    const payload = {
+      ...operational,
+      vessel: { ...link.vessel, design: { manualPerformance: { jump: null } } },
+    };
+    const encoded = btoa(JSON.stringify(payload))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    expect(decodePassage(encoded)).toBeNull();
   });
   it('round trips ordered stops and the itinerary mode', () => {
     const itinerary: PassageLink = {

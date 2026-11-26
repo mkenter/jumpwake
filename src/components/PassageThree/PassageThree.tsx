@@ -801,7 +801,7 @@ function CopyPassageLink({
               hint: imported!.source.slice(0, 120),
             };
       const payload = encodePassage({
-        version: 2,
+        version: 3,
         stops: stopsRequired,
         mode,
         chart: identity,

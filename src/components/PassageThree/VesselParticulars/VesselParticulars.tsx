@@ -310,13 +310,13 @@ export function VesselParticulars({
         <div className={styles.notes}>
           <p>
             {vessel.design
-              ? 'Operational assessment applied for this visit. Reapply after changing the catalog.'
+              ? 'Operational particulars retained. Reapply after changing the catalog.'
               : 'Route-only vessel: operational particulars are incomplete.'}
           </p>
           {vessel.design && (
             <p>
-              Operational details are not saved or included in shared passages;
-              the route settings are retained.
+              Operational particulars are saved and shared; private catalog data
+              is not included.
             </p>
           )}
         </div>
