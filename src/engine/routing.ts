@@ -188,11 +188,13 @@ export function createRouter<S extends RouteSystem>(
     addresses.add(address);
     return position;
   });
+  const visitable = systems.map((system) => rules.canVisit?.(system) ?? true);
   const neighbors = positions.map((p, i) =>
     positions.flatMap((q, j) => {
       const distance = hexDistance(p, q);
       const tons = consumption[distance - 1];
       return i !== j &&
+        visitable[j] &&
         distance <= maxJumpDistance &&
         tons !== undefined &&
         tons <= capacity
@@ -244,6 +246,8 @@ export function createRouter<S extends RouteSystem>(
         if (index === undefined) throw new Error('Unknown system ID');
         return index;
       });
+      if (!visitable[origin])
+        return { status: 'unreachable', originId, destinationId, failedLeg: 0 };
       const stateWidth = systems.length * width;
       const labels: (Label | undefined)[] = Array.from({
         length: stateWidth * (targets.length + 1),

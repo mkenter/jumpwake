@@ -39,6 +39,21 @@ describe('imported chart storage', () => {
       expect(restoreChart()).toBeNull();
     }
   });
+  it('restores older accepted profiles with unsupported observations as unknown', () => {
+    localStorage.setItem(
+      CHART_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        text: 'Hex\tName\tUWP\tPBG\tZone\n0101\tOld\tA00B000-0\t000\tZ',
+        source: 'old.tab',
+        selected: 'A',
+      }),
+    );
+    expect(restoreChart()?.charts[0]?.worlds[0]?.facts).toMatchObject({
+      hydrographics: null,
+      travelZone: null,
+    });
+  });
   it('forgets only chart data', () => {
     localStorage.setItem('jumpwake.vessel', 'vessel');
     saveChart(imported);
