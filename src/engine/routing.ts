@@ -248,7 +248,15 @@ export function createRouter<S extends RouteSystem>(
       });
       const settled = new Set<number>();
       const frontier = new Frontier(labels, preference);
-      const start = origin * width + levelIndices.get(initial)!;
+      const advance = (stage: number, world: number) => {
+        if (mode === 'direct')
+          return stage + (targets[stage] === world ? 1 : 0);
+        while (stage < targets.length && targets[stage] === world) stage++;
+        return stage;
+      };
+      const initialStage = mode === 'waypoints' ? advance(0, origin) : 0;
+      const start =
+        initialStage * stateWidth + origin * width + levelIndices.get(initial)!;
       labels[start] = { cost: 0, jumps: 0, distance: 0, key: [], events: [] };
       frontier.update(start);
       while (true) {
@@ -289,7 +297,7 @@ export function createRouter<S extends RouteSystem>(
             const arrivalIndex = levelIndices.get(departure - consumed);
             if (arrivalIndex === undefined)
               throw new Error('Fuel-state closure violated');
-            const nextStage = stage + (target === targets[stage] ? 1 : 0);
+            const nextStage = advance(stage, target);
             const next = nextStage * stateWidth + target * width + arrivalIndex;
             if (settled.has(next)) continue;
             const tons = departure - fuel;

@@ -1004,6 +1004,29 @@ it('breaks a fewest-jumps tie by purchased credits before distance and itinerary
 });
 
 describe('ordered itineraries', () => {
+  it.each(preferences)(
+    'satisfies consecutive occupied waypoints without extra jumps (%s)',
+    (preference) => {
+      const router = createRouter([system('a', 1), system('b', 2)]);
+      const baseline = router.findRoute('a', 'b', preference);
+      expect(
+        router.findRoute('a', 'b', preference, ['a', 'a', 'b', 'b']),
+      ).toEqual(baseline);
+      expect(
+        reached(router.findRoute('a', 'a', preference, ['a'])).jumpCount,
+      ).toBe(0);
+      expect(stops(router.findRoute('a', 'a', preference, ['b']))).toEqual([
+        'b',
+        'a',
+      ]);
+      expect(
+        router.findRoute('a', 'b', preference, ['a'], 'direct').status,
+      ).toBe('unreachable');
+      expect(
+        router.findRoute('a', 'b', preference, ['b'], 'direct').status,
+      ).toBe('unreachable');
+    },
+  );
   it('buys fuel before a waypoint when a later leg needs it', () => {
     const rules = createClassicTraveller1981Rules(
       {

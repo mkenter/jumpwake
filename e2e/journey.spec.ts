@@ -410,6 +410,9 @@ test('repairs an infeasible specified itinerary', async ({ page }) => {
     .selectOption('direct');
   await expect(page.getByRole('status')).toContainText('Leg 1');
   await page.getByRole('button', { name: 'Add stop' }).click();
+  await expect(page.getByRole('status')).toContainText(
+    'Leg 1: Aster Quay to Aster Quay',
+  );
   await page.getByRole('combobox', { name: 'Stop 1' }).selectOption('brass');
   await expect(page.getByRole('status')).toContainText('2 jumps');
   await page.getByRole('button', { name: 'Remove stop 1' }).click();

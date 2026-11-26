@@ -198,6 +198,7 @@ export function PassageThree() {
     result?.status === 'unreachable'
       ? [...stopsRequired, destination].findIndex(
           (_, i, all) =>
+            (mode === 'direct' && all[i] === (i === 0 ? origin : all[i - 1])) ||
             router.findRoute(origin, all[i]!, preference, all.slice(0, i), mode)
               .status === 'unreachable',
         )
