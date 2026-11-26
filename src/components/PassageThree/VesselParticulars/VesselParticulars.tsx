@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
+import {
+  assessVesselDesign,
+  exampleDriveCatalog,
+  type DriveCatalog,
+  type DriveKind,
+  type VesselDesign,
+} from '../../../rules/classicTraveller1981/vesselDesign';
 import { validateShip } from '../../../rules/classicTraveller1981';
 import { DEFAULT_VESSEL, type Vessel } from '../vessel';
 import styles from './VesselParticulars.module.css';
@@ -101,9 +108,20 @@ type Props = {
   vessel: Vessel;
   onApply: (vessel: Vessel) => void;
   saveUnavailable: boolean;
+  catalog?: DriveCatalog;
 };
 
-export function VesselParticulars({ vessel, onApply, saveUnavailable }: Props) {
+export function VesselParticulars({
+  vessel,
+  onApply,
+  saveUnavailable,
+  catalog = exampleDriveCatalog,
+}: Props) {
+  const [operational, setOperational] = useState(Boolean(vessel.design));
+  const [design, setDesign] = useState<VesselDesign>(vessel.design ?? {});
+  const [manual, setManual] = useState<
+    Partial<Record<DriveKind, { rating: string; provenance: string }>>
+  >({});
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => draftFrom(vessel));
   const [submitted, setSubmitted] = useState(false);
@@ -114,6 +132,31 @@ export function VesselParticulars({ vessel, onApply, saveUnavailable }: Props) {
   const reduced = useReducedMotion();
   const { errors } = validateDraft(draft);
   const { ship, state } = vessel;
+  const designWithoutManual = { ...design };
+  delete designWithoutManual.manualPerformance;
+  const assessedDesign: VesselDesign = {
+    ...designWithoutManual,
+    displacementTons: draft.displacementTons.trim()
+      ? Number(draft.displacementTons)
+      : undefined,
+    streamlined: draft.streamlined,
+    manualPerformance: Object.fromEntries(
+      Object.entries(manual)
+        .filter(([, value]) => value.rating || value.provenance)
+        .map(([kind, value]) => [
+          kind,
+          { rating: Number(value.rating), provenance: value.provenance },
+        ]),
+    ),
+  } as VesselDesign;
+  const assessment = assessVesselDesign(assessedDesign, catalog);
+  const operationalError =
+    assessment.status === 'invalid' ||
+    assessment.status === 'incomplete' ||
+    assessment.effectiveJump === undefined ||
+    assessment.plantRating === undefined ||
+    Number(draft.jumpFuelCapacityTons) >
+      (assessedDesign.tankageTons ?? 0) - 10 * assessment.plantRating;
 
   useEffect(() => {
     if (open) firstRef.current?.focus();
@@ -136,13 +179,24 @@ export function VesselParticulars({ vessel, onApply, saveUnavailable }: Props) {
     event.preventDefault();
     const result = validateDraft(draft);
     setSubmitted(true);
-    if (Object.keys(result.errors).length) {
+    if (
+      Object.keys(result.errors).length ||
+      (operational && operationalError)
+    ) {
       requestAnimationFrame(() =>
         formRef.current
           ?.querySelector<HTMLElement>('[aria-invalid="true"]')
           ?.focus(),
       );
       return;
+    }
+    if (operational) {
+      result.vessel.ship = {
+        ...result.vessel.ship,
+        jumpRating: assessment.effectiveJump!,
+        hasFuelScoops: draft.streamlined,
+      };
+      result.vessel.design = assessedDesign;
     }
     validateShip(result.vessel.ship, result.vessel.state);
     onApply(result.vessel);
@@ -229,6 +283,21 @@ export function VesselParticulars({ vessel, onApply, saveUnavailable }: Props) {
             if (open) close();
             else {
               setDraft(draftFrom(vessel));
+              setOperational(Boolean(vessel.design));
+              setDesign(vessel.design ?? {});
+              setManual(
+                Object.fromEntries(
+                  Object.entries(vessel.design?.manualPerformance ?? {}).map(
+                    ([kind, value]) => [
+                      kind,
+                      {
+                        rating: String(value.rating),
+                        provenance: value.provenance,
+                      },
+                    ],
+                  ),
+                ),
+              );
               setSubmitted(false);
               setRestored(false);
               setOpen(true);
@@ -238,6 +307,19 @@ export function VesselParticulars({ vessel, onApply, saveUnavailable }: Props) {
           {open ? 'Close particulars' : 'Edit particulars'}
           <span aria-hidden="true">{open ? '−' : '+'}</span>
         </button>
+        <div className={styles.notes}>
+          <p>
+            {vessel.design
+              ? 'Operational assessment applied for this visit. Reapply after changing the catalog.'
+              : 'Route-only vessel: operational particulars are incomplete.'}
+          </p>
+          {vessel.design && (
+            <p>
+              Operational details are not saved or included in shared passages;
+              the route settings are retained.
+            </p>
+          )}
+        </div>
       </div>
       {saveUnavailable && (
         <p className={styles.saveNote}>
@@ -266,6 +348,155 @@ export function VesselParticulars({ vessel, onApply, saveUnavailable }: Props) {
               <p>Particulars for passage</p>
               <span>Configure your vessel for route planning.</span>
             </div>
+            <label>
+              <input
+                type="checkbox"
+                checked={operational}
+                onChange={(event) => setOperational(event.target.checked)}
+              />{' '}
+              Assess operational particulars
+            </label>
+            {operational && (
+              <fieldset className={styles.operationalDetails}>
+                <legend>Operational particulars</legend>
+                <p>
+                  These checks do not establish full construction legality.
+                  Software is not assessed. Details are kept only for this
+                  visit.
+                </p>
+                {(
+                  [
+                    'jumpDrive',
+                    'maneuverDrive',
+                    'powerPlant',
+                    'computer',
+                  ] as const
+                ).map((field) => (
+                  <label key={field}>
+                    {
+                      {
+                        jumpDrive: 'Jump drive letter',
+                        maneuverDrive:
+                          'Maneuver drive letter (enter none if absent)',
+                        powerPlant: 'Power plant letter',
+                        computer: 'Computer model',
+                      }[field]
+                    }
+                    <input
+                      value={
+                        design[field] === null ? 'none' : (design[field] ?? '')
+                      }
+                      onChange={(event) =>
+                        setDesign({
+                          ...design,
+                          [field]:
+                            field === 'maneuverDrive' &&
+                            event.target.value.toLowerCase() === 'none'
+                              ? null
+                              : field === 'computer'
+                                ? event.target.value
+                                : event.target.value.toUpperCase(),
+                        })
+                      }
+                    />
+                  </label>
+                ))}
+                <label>
+                  Installed total tankage (tons)
+                  <input
+                    type="number"
+                    min="0"
+                    value={design.tankageTons ?? ''}
+                    onChange={(event) =>
+                      setDesign({
+                        ...design,
+                        tankageTons:
+                          event.target.value === ''
+                            ? undefined
+                            : Number(event.target.value),
+                      } as VesselDesign)
+                    }
+                  />
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={design.custom ?? false}
+                    onChange={(event) =>
+                      setDesign({ ...design, custom: event.target.checked })
+                    }
+                  />{' '}
+                  Referee-customized design
+                </label>
+                {(['jump', 'maneuver', 'plant'] as const).map((kind) => (
+                  <div key={kind}>
+                    <label>
+                      Referee {kind} rating for unavailable data
+                      <input
+                        type="number"
+                        min="1"
+                        max="6"
+                        value={manual[kind]?.rating ?? ''}
+                        onChange={(event) =>
+                          setManual({
+                            ...manual,
+                            [kind]: {
+                              rating: event.target.value,
+                              provenance: manual[kind]?.provenance ?? '',
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Referee {kind} source
+                      <input
+                        value={manual[kind]?.provenance ?? ''}
+                        onChange={(event) =>
+                          setManual({
+                            ...manual,
+                            [kind]: {
+                              rating: manual[kind]?.rating ?? '',
+                              provenance: event.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                ))}
+                <p>
+                  Assessment: {assessment.status}; drive jump{' '}
+                  {assessment.jumpRating ?? 'unknown'}; effective jump{' '}
+                  {assessment.effectiveJump ?? 'unknown'}; maneuver{' '}
+                  {assessment.maneuverRating ?? 'unknown'}; plant{' '}
+                  {assessment.plantRating ?? 'unknown'}; minimum tankage{' '}
+                  {assessment.minimumTankageTons ?? 'unknown'} tons.
+                </p>
+                {assessment.issues.length > 0 && (
+                  <ul>
+                    {assessment.issues.map((issue, index) => (
+                      <li key={index}>{issue}</li>
+                    ))}
+                  </ul>
+                )}
+                {assessment.plantRating !== undefined &&
+                  Number(draft.jumpFuelCapacityTons) >
+                    (assessedDesign.tankageTons ?? 0) -
+                      10 * assessment.plantRating && (
+                    <p>
+                      Jump-fuel capacity and required plant fuel exceed
+                      installed tankage.
+                    </p>
+                  )}
+                {submitted && operationalError && (
+                  <p role="alert">
+                    Complete or correct the operational particulars before
+                    applying.
+                  </p>
+                )}
+              </fieldset>
+            )}
             <div className={styles.groups}>
               <fieldset className={styles.specifications}>
                 <legend>Vessel specifications</legend>
@@ -282,12 +513,18 @@ export function VesselParticulars({ vessel, onApply, saveUnavailable }: Props) {
                     <label htmlFor="vessel-jumpRating">Jump rating</label>
                     <select
                       id="vessel-jumpRating"
-                      value={draft.jumpRating}
+                      disabled={operational}
+                      value={
+                        operational
+                          ? String(assessment.effectiveJump ?? '')
+                          : draft.jumpRating
+                      }
                       onChange={(event) => {
                         setDraft({ ...draft, jumpRating: event.target.value });
                         setRestored(false);
                       }}
                     >
+                      {operational && <option value="">Unknown</option>}
                       {[1, 2, 3, 4, 5, 6].map((rating) => (
                         <option key={rating} value={rating}>
                           Jump-{rating}
@@ -308,7 +545,10 @@ export function VesselParticulars({ vessel, onApply, saveUnavailable }: Props) {
                   <label>
                     <input
                       type="checkbox"
-                      checked={draft.hasFuelScoops}
+                      disabled={operational}
+                      checked={
+                        operational ? draft.streamlined : draft.hasFuelScoops
+                      }
                       onChange={(event) => {
                         setDraft({
                           ...draft,
@@ -357,6 +597,9 @@ export function VesselParticulars({ vessel, onApply, saveUnavailable }: Props) {
                   type="button"
                   onClick={() => {
                     setDraft(draftFrom(DEFAULT_VESSEL));
+                    setOperational(false);
+                    setDesign({});
+                    setManual({});
                     setSubmitted(false);
                     setRestored(true);
                   }}

@@ -60,6 +60,11 @@ describe('vessel persistence', () => {
   ])('falls back for malformed, obsolete or invalid data: %s', (stored) => {
     expect(decodeVessel(stored)).toEqual(DEFAULT_VESSEL);
   });
+  it('keeps operational details out of version 1 storage', () => {
+    saveVessel({ ...vessel, design: { jumpDrive: 'A' } });
+    expect(restoreVessel()).toEqual(vessel);
+    expect(localStorage.getItem(VESSEL_STORAGE_KEY)).not.toContain('jumpDrive');
+  });
   it('works without browser storage access', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('blocked');

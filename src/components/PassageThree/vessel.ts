@@ -6,7 +6,10 @@ import {
   type ShipSpecifications,
 } from '../../rules/classicTraveller1981';
 
+import type { VesselDesign } from '../../rules/classicTraveller1981/vesselDesign';
+
 export interface Vessel {
+  design?: VesselDesign;
   ship: ShipSpecifications;
   state: ShipOperatingState;
 }
@@ -61,7 +64,7 @@ export function saveVessel(vessel: Vessel): boolean {
   try {
     window.localStorage.setItem(
       VESSEL_STORAGE_KEY,
-      JSON.stringify({ version: 1, ...vessel }),
+      JSON.stringify({ version: 1, ship: vessel.ship, state: vessel.state }),
     );
     return true;
   } catch {

@@ -12,18 +12,14 @@ import {
 } from '../../rules/classicTraveller1981/driveCatalog';
 import styles from './DriveCatalogPanel.module.css';
 
-const KEY = 'jumpwake.private-drive-catalog.v1';
-function load(): PrivateDriveCatalog | null {
-  try {
-    const text = localStorage.getItem(KEY);
-    return text ? parseDriveCatalog(text) : null;
-  } catch {
-    return null;
-  }
-}
-export function DriveCatalogPanel() {
+import { KEY, loadDriveCatalog } from './catalogStorage';
+export function DriveCatalogPanel({
+  onCatalogChange,
+}: {
+  onCatalogChange?: (catalog: PrivateDriveCatalog | null) => void;
+}) {
   const importVersion = useRef(0);
-  const [catalog, setCatalog] = useState(load);
+  const [catalog, setCatalog] = useState(loadDriveCatalog);
   const [message, setMessage] = useState('');
   const [hull, setHull] = useState(100);
   const [letter, setLetter] = useState('A');
@@ -65,6 +61,7 @@ export function DriveCatalogPanel() {
       const next = parseDriveCatalog(text);
       localStorage.setItem(KEY, text);
       setCatalog(next);
+      onCatalogChange?.(next);
       setMessage('Catalog imported locally.');
     } catch (error) {
       if (version !== importVersion.current) return;
@@ -78,6 +75,7 @@ export function DriveCatalogPanel() {
     try {
       localStorage.removeItem(KEY);
       setCatalog(null);
+      onCatalogChange?.(null);
       setMessage('Catalog removed.');
     } catch {
       setMessage('Could not remove the catalog from local storage.');

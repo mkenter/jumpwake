@@ -1,3 +1,8 @@
+import {
+  makeDriveCatalog,
+  type PrivateDriveCatalog,
+} from '../../rules/classicTraveller1981/driveCatalog';
+import { exampleDriveCatalog } from '../../rules/classicTraveller1981/vesselDesign';
 import { createClassicTraveller1981Rules } from '../../rules/classicTraveller1981';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
@@ -35,7 +40,11 @@ import {
   type PassageLink,
 } from './passageLink';
 
-export function PassageThree() {
+export function PassageThree({
+  catalog = null,
+}: {
+  catalog?: PrivateDriveCatalog | null;
+}) {
   const [restored] = useState(restoreChart);
   const [imported, setImported] = useState<ImportedChart | null>(restored);
   const [link] = useState(() => {
@@ -489,6 +498,7 @@ export function PassageThree() {
           </fieldset>
           <VesselParticulars
             vessel={vessel}
+            catalog={catalog ? makeDriveCatalog(catalog) : exampleDriveCatalog}
             onApply={applyVessel}
             saveUnavailable={saveUnavailable}
           />

@@ -30,7 +30,12 @@ export async function chartDigest(text: string): Promise<string> {
 }
 
 export function encodePassage(link: PassageLink): string {
-  const bytes = new TextEncoder().encode(JSON.stringify(link));
+  const bytes = new TextEncoder().encode(
+    JSON.stringify({
+      ...link,
+      vessel: { ship: link.vessel.ship, state: link.vessel.state },
+    }),
+  );
   return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
@@ -80,7 +85,10 @@ export function decodePassage(encoded: string): PassageLink | null {
     )
       return null;
     validateShip(value.vessel.ship, value.vessel.state);
-    return value;
+    return {
+      ...value,
+      vessel: { ship: value.vessel.ship, state: value.vessel.state },
+    };
   } catch {
     return null;
   }
