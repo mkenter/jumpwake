@@ -34,6 +34,8 @@ The route planner models fuel aboard as part of the search state, so a cheaper j
 
 The implementation includes unit tests, an independent routing-correctness review, and Playwright tests covering imports, routes, keyboard and touch interaction, and different screen sizes.
 
+The CT81 adapter uses fuel equal to one tenth of hull displacement per parsec jumped (Book 2, pp. 6–7, 14–15). It offers refined fuel at A/B ports for Cr500 per ton, unrefined at C/D for Cr100 per ton, and no purchased fuel at E/X (Book 3, p. 10; Book 2, pp. 14–15). A/B unrefined sales at Cr100 are a referee assumption enabled by default; authored systems can set `unrefinedFuelAvailable: false` on an A/B port. Gas-giant scooping is a separate free source. The supported hull sizes produce whole-ton jump consumption; fractional tons are not rounded.
+
 **Current boundaries:** planning is limited to one active subsector. Fuel risk, power-plant fuel, travel time, full ship construction, and some wilderness refueling options are not modeled.
 
 ## Run locally
