@@ -25,6 +25,45 @@ export function ChartArchive({
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const request = useRef(0);
+  const [dragging, setDragging] = useState(false);
+  const dragDepth = useRef(0);
+
+  async function importFile(file: File) {
+    const token = ++request.current;
+    setErrors([]);
+    if (file.size > MAX_FILE_BYTES) {
+      setErrors(['File exceeds 2 MiB.']);
+      return;
+    }
+    setLoading(true);
+    try {
+      const text = new TextDecoder('utf-8', { fatal: true }).decode(
+        await file.arrayBuffer(),
+      );
+      if (token !== request.current) return;
+      const result = parseSubsectors(text, file.name);
+      if (!result.ok) setErrors(result.errors);
+      else {
+        const next = {
+          text,
+          source: file.name,
+          selected: result.charts[0]!.position!,
+          charts: result.charts,
+        };
+        onImport(next);
+        setStorageWarning(!saveChart(next));
+        onSelect(result.charts[0]!);
+      }
+    } catch {
+      if (token === request.current) {
+        setErrors([
+          'Unable to read UTF-8 text. Choose a T5 Tab Delimited file.',
+        ]);
+      }
+    } finally {
+      if (token === request.current) setLoading(false);
+    }
+  }
   return (
     <details className={styles.archive} open={pending || undefined}>
       <summary>
@@ -36,50 +75,57 @@ export function ChartArchive({
         saved on this device when browser storage is available; files are not
         uploaded.
       </p>
-      <label>
-        Load navigation chart{' '}
-        <input
-          type="file"
-          disabled={loading}
-          onChange={async (event) => {
-            const file = event.target.files?.[0];
-            event.target.value = '';
-            if (!file) return;
-            const token = ++request.current;
-            setErrors([]);
-            if (file.size > MAX_FILE_BYTES) {
-              setErrors(['File exceeds 2 MiB.']);
-              return;
-            }
-            setLoading(true);
-            try {
-              const text = new TextDecoder('utf-8', { fatal: true }).decode(
-                await file.arrayBuffer(),
-              );
-              if (token !== request.current) return;
-              const result = parseSubsectors(text, file.name);
-              if (!result.ok) setErrors(result.errors);
-              else {
-                const next = {
-                  text,
-                  source: file.name,
-                  selected: result.charts[0]!.position!,
-                  charts: result.charts,
-                };
-                onImport(next);
-                setStorageWarning(!saveChart(next));
-                onSelect(result.charts[0]!);
-              }
-            } catch {
-              setErrors([
-                'Unable to read UTF-8 text. Choose a T5 Tab Delimited file.',
-              ]);
-            } finally {
-              setLoading(false);
-            }
-          }}
-        />
-      </label>
+      <div
+        className={styles.dropZone}
+        data-dragging={dragging || undefined}
+        onDragEnter={(event) => {
+          event.preventDefault();
+          if (Array.from(event.dataTransfer.types).includes('Files')) {
+            dragDepth.current++;
+            setDragging(true);
+          }
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+          event.dataTransfer.dropEffect =
+            !loading && Array.from(event.dataTransfer.types).includes('Files')
+              ? 'copy'
+              : 'none';
+        }}
+        onDragLeave={(event) => {
+          event.preventDefault();
+          if (--dragDepth.current <= 0) {
+            dragDepth.current = 0;
+            setDragging(false);
+          }
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          dragDepth.current = 0;
+          setDragging(false);
+          if (loading) return;
+          const files = event.dataTransfer.files;
+          if (files.length !== 1) {
+            setErrors(['Drop one chart file at a time.']);
+            return;
+          }
+          void importFile(files[0]!);
+        }}
+      >
+        <p>Drop a T5 Tab Delimited chart here, or choose a file.</p>
+        <label>
+          Load navigation chart{' '}
+          <input
+            type="file"
+            disabled={loading}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (file) void importFile(file);
+            }}
+          />
+        </label>
+      </div>
       {loading && <p role="status">Reading chart…</p>}
       {storageWarning && (
         <p role="status">
@@ -130,6 +176,7 @@ export function ChartArchive({
         <button
           onClick={() => {
             ++request.current;
+            setLoading(false);
             onImport(null);
             setErrors([]);
             setStorageWarning(!forgetChart());

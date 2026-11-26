@@ -26,7 +26,7 @@ In Ember Reach, select **Aster Quay → Cinder Rest**. The default ship can make
 
 You can also try **Aster Quay → Orison** for a route with paid fuel and a return visit, or **Aster Quay → Last Ember** for an unreachable destination.
 
-To use your own chart, open **Chart bureau** and import a UTF-8 T5 tab-delimited file. The [Traveller Map data API](https://travellermap.com/doc/api) and [file-format documentation](https://travellermap.com/doc/fileformats) describe compatible exports. Jumpwake doesn't download or bundle official map data.
+To use your own chart, open **Chart bureau** and choose or drop a UTF-8 T5 tab-delimited file. The [Traveller Map data API](https://travellermap.com/doc/api) and [file-format documentation](https://travellermap.com/doc/fileformats) describe compatible exports. Jumpwake doesn't download or bundle official map data.
 
 ## How it works
 

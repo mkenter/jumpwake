@@ -179,3 +179,43 @@ test('restores the selected imported subsector after reload and can forget it', 
     page.getByRole('heading', { name: /Ember Reach.*field chart/ }),
   ).toBeVisible();
 });
+
+test('imports a dropped chart and preserves it when a drop is invalid', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByText('Chart bureau', { exact: false }).first().click();
+  const dropZone = page
+    .getByText('Drop a T5 Tab Delimited chart here, or choose a file.')
+    .locator('..');
+  const drop = async (files: { name: string; content: string }[]) => {
+    const data = await page.evaluateHandle(`(() => {
+      const transfer = new DataTransfer();
+      for (const entry of ${JSON.stringify(files)}) {
+        transfer.items.add(new File([entry.content], entry.name));
+      }
+      return transfer;
+    })()`);
+    await dropZone.dispatchEvent('drop', { dataTransfer: data });
+    await data.dispose();
+  };
+  await drop([
+    {
+      name: 'dropped.tab',
+      content: `${header}0101\tDropped World\tA867A99-C\t100\t\n`,
+    },
+  ]);
+  await expect(
+    page.getByText('Source: dropped.tab.', { exact: false }),
+  ).toBeVisible();
+  await drop([{ name: 'bad.tab', content: 'invalid' }]);
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(
+    page.getByText('Source: dropped.tab.', { exact: false }),
+  ).toBeVisible();
+  await drop([
+    { name: 'a.tab', content: '' },
+    { name: 'b.tab', content: '' },
+  ]);
+  await expect(page.getByText('Drop one chart file at a time.')).toBeVisible();
+});
