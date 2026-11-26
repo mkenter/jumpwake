@@ -10,6 +10,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PassageThree } from './PassageThree';
 import * as engine from '../../engine';
+import * as chartStorage from './chartStorage';
+import { parseSubsectors } from '../../import/subsector';
 import { DEFAULT_VESSEL, VESSEL_STORAGE_KEY } from './vessel';
 
 beforeEach(() => {
@@ -53,6 +55,45 @@ async function passage() {
 }
 
 describe('applied vessel and passage integration', () => {
+  it('does not attribute a prohibited passage to fuel in either routing mode', async () => {
+    const parsed = parseSubsectors(
+      'Hex\tName\tUWP\tPBG\n0101\tAlpha\tA000000-0\t000\n0102\tBeta\tA000000-0\t000',
+    );
+    if (!parsed.ok) throw new Error(parsed.errors.join());
+    const original = parsed.charts[0]!;
+    const [a, b] = original.worlds;
+    const chart = {
+      ...original,
+      worlds: [{ ...a!, facts: { ...a!.facts!, travelProhibited: true } }, b!],
+    };
+    vi.spyOn(chartStorage, 'restoreChart').mockReturnValue({
+      text: '',
+      source: 'test',
+      selected: chart.position!,
+      charts: [chart],
+    });
+    const user = userEvent.setup();
+    render(<PassageThree />);
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Origin' }),
+      a!.id,
+    );
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Destination' }),
+      b!.id,
+    );
+    const manifest = screen.getByRole('region', { name: 'Passage manifest' });
+    expect(manifest).toHaveTextContent(
+      'fuel, refueling, or travel restrictions may prevent a passage',
+    );
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Routing mode' }),
+      'direct',
+    );
+    expect(manifest).toHaveTextContent(
+      'Fuel, refueling, or travel restrictions may prevent this leg',
+    );
+  });
   it('does not recalculate an unreachable itinerary on unrelated renders', async () => {
     const actualCreateRouter = engine.createRouter;
     const findRoute = vi.fn();
@@ -175,7 +216,7 @@ describe('applied vessel and passage integration', () => {
     );
     await apply();
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Jump range is sufficient, but current fuel and refueling constraints prevent a passage.',
+      'Jump range is sufficient, but fuel, refueling, or travel restrictions may prevent a passage.',
     );
     expect(within(manifest).queryAllByRole('listitem')).toHaveLength(0);
     await user.selectOptions(

@@ -220,10 +220,10 @@ export function PassageThree() {
                     distance <= ship.jumpRating &&
                     rules.jumpFuelTons(distance) <= ship.jumpFuelCapacityTons
                   : hasJumpChain(chart.worlds, from, to, ship.jumpRating);
-              return `Leg ${failedLeg + 1}: ${fromWorld.name} to ${toWorld.name}. ${geometryValid ? 'Available fuel and refueling cannot support this leg.' : 'No valid jump route is within the ship’s range.'} Edit the itinerary to repair it.`;
+              return `Leg ${failedLeg + 1}: ${fromWorld.name} to ${toWorld.name}. ${geometryValid ? 'Fuel, refueling, or travel restrictions may prevent this leg.' : 'No valid jump route is within the ship’s range.'} Edit the itinerary to repair it.`;
             })()
           : hasJumpChain(chart.worlds, origin, destination, ship.jumpRating)
-            ? 'Jump range is sufficient, but current fuel and refueling constraints prevent a passage.'
+            ? 'Jump range is sufficient, but fuel, refueling, or travel restrictions may prevent a passage.'
             : `No chain of jumps reaches the destination at Jump-${ship.jumpRating}.`
         : '';
     const restriction = chart.worlds.some(

@@ -79,3 +79,22 @@ describe('CT81 world observations', () => {
     expect(() => withRefereeOverrides(a!.facts!, { size: 2 })).toThrow();
   });
 });
+
+it('snapshots visit permissions for origins and destinations despite later mutations', () => {
+  const result = parseSubsectors(
+    'Hex\tName\tUWP\tPBG\n0101\tA\tA000000-0\t000\n0102\tB\tA000000-0\t000',
+  );
+  if (!result.ok) throw new Error(result.errors.join());
+  const [a, b] = result.charts[0]!.worlds;
+  const facts = { ...a!.facts!, travelProhibited: false };
+  const rules = { ...classicTraveller1981 };
+  const router = createRouter([{ ...a!, facts }, b!], rules);
+  facts.travelProhibited = true;
+  rules.canVisit = () => false;
+  expect(router.findRoute(a!.id, b!.id).status).toBe('reachable');
+  expect(router.findRoute(b!.id, a!.id).status).toBe('reachable');
+  const restricted = createRouter([{ ...a!, facts }, b!], classicTraveller1981);
+  facts.travelProhibited = false;
+  expect(restricted.findRoute(a!.id, b!.id).status).toBe('unreachable');
+  expect(restricted.findRoute(b!.id, a!.id).status).toBe('unreachable');
+});
