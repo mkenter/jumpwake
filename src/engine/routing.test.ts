@@ -1002,3 +1002,51 @@ it('breaks a fewest-jumps tie by purchased credits before distance and itinerary
   ).toEqual([0, 2, 6]);
   expectBalanced(systems, result);
 });
+
+it('uses the port override to price fuel and preserves the jump ledger', () => {
+  const rules = createClassicTraveller1981Rules(
+    { ...SHIP, displacementTons: 100, jumpRating: 1, jumpFuelCapacityTons: 10 },
+    { initialFuelTons: 0 },
+  );
+  const port = system('a', 1, 'A');
+  const destination = system('b', 2);
+  for (const [available, grade, cost] of [
+    [true, 'unrefined', 1000],
+    [false, 'refined', 5000],
+  ] as const) {
+    const result = reached(
+      createEngineRouter(
+        [{ ...port, unrefinedFuelAvailable: available }, destination],
+        rules,
+      ).findRoute('a', 'b'),
+    );
+    expect(result).toMatchObject({
+      totalCostCredits: cost,
+      fuelRemainingTons: 0,
+      jumpCount: 1,
+    });
+    expect(result.events).toMatchObject([
+      {
+        kind: 'refuel',
+        grade,
+        tons: 10,
+        costCredits: cost,
+        fuelBeforeTons: 0,
+        fuelAfterTons: 10,
+      },
+      {
+        kind: 'jump',
+        distance: 1,
+        fuelConsumedTons: 10,
+        fuelBeforeTons: 10,
+        fuelAfterTons: 0,
+      },
+    ]);
+  }
+  expect(
+    createEngineRouter([system('a', 1, 'E'), destination], rules).findRoute(
+      'a',
+      'b',
+    ).status,
+  ).toBe('unreachable');
+});
