@@ -47,7 +47,7 @@ describe('CT81 operational design assessment', () => {
     ).toMatchObject({ status: 'incomplete', jumpRating: 2 });
     expect(
       assessVesselDesign({ ...base, displacementTons: 110 }),
-    ).toMatchObject({ status: 'incomplete' });
+    ).toMatchObject({ status: 'assessed', minimumTankageTons: 21 });
   });
   it('checks plant ordering and minimum tankage independently of aboard fuel', () => {
     expect(assessVesselDesign({ ...base, tankageTons: 39 })).toMatchObject({
@@ -111,13 +111,13 @@ describe('catalog and assessment boundaries', () => {
       minimumTankageTons: 50,
     });
   });
-  it('does not guess adjacency from the sparse example catalog', () => {
+  it('uses established adjacency for the sparse example catalog', () => {
     expect(
       assessVesselDesign({ ...base, displacementTons: 150 }),
     ).toMatchObject({
-      status: 'incomplete',
-      jumpRating: undefined,
-      minimumTankageTons: undefined,
+      status: 'assessed',
+      jumpRating: 1,
+      minimumTankageTons: 25,
     });
   });
   it('distinguishes known invalid entries from absent or malformed catalog data', () => {
@@ -146,7 +146,7 @@ describe('catalog and assessment boundaries', () => {
     ).toMatchObject({ status: 'incomplete' });
   });
   it('treats unknown computer models as missing reference data, including inherited property names', () => {
-    for (const computer of ['3', 'toString', '__proto__']) {
+    for (const computer of ['8', 'toString', '__proto__']) {
       expect(assessVesselDesign({ ...base, computer })).toMatchObject({
         status: 'incomplete',
         effectiveJump: undefined,

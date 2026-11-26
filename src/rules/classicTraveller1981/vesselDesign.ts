@@ -14,6 +14,10 @@ export interface VesselDesign {
   streamlined?: boolean;
   /** Indicates referee-supplied or nonstandard particulars. */
   custom?: boolean;
+  /** Referee ratings apply only when catalog data is unavailable. */
+  manualPerformance?: Partial<
+    Record<DriveKind, { rating: number; provenance: string }>
+  >;
 }
 export type DriveKind = 'jump' | 'maneuver' | 'plant';
 export type DriveLookup =
@@ -67,12 +71,15 @@ export function createHullRowResolver(
 const unavailable: DriveLookup = { status: 'unavailable' };
 /** Only the examples supplied with DEV-58 are included; row adjacency is unknown. */
 export const exampleDriveCatalog: DriveCatalog = {
-  resolveHullRow: (hull) => ([100, 200, 800].includes(hull) ? hull : undefined),
-  lookup: (hull, letter, kind) => {
+  resolveHullRow: createHullRowResolver(
+    [100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000],
+    100,
+  ),
+  lookup: (hull, letter) => {
     if (letter === 'A' && hull === 100) return { status: 'known', rating: 2 };
     if (letter === 'A' && hull === 200) return { status: 'known', rating: 1 };
-    if (letter === 'K' && hull === 800 && kind === 'jump')
-      return { status: 'known', rating: 2 };
+    if (letter === 'D' && hull === 100) return { status: 'invalid' };
+    if (letter === 'K' && hull === 800) return { status: 'known', rating: 2 };
     return unavailable;
   },
 };
@@ -89,6 +96,13 @@ export interface DesignAssessment {
 }
 const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 const computerJump: Readonly<Record<string, number | undefined>> = {
+  '1': 1,
+  '2': 2,
+  '3': 3,
+  '4': 4,
+  '5': 5,
+  '6': 6,
+  '7': 7,
   '1bis': 2,
   '2bis': 3,
 };
@@ -99,6 +113,7 @@ export function assessVesselDesign(
   const issues: string[] = [];
   let invalid = false;
   let incomplete = false;
+  let usedManual = false;
   const bad = (message: string) => {
     invalid = true;
     issues.push(message);
@@ -137,11 +152,34 @@ export function assessVesselDesign(
     const result = catalog.lookup(row, letter, kind);
     if (result.status === 'invalid')
       bad(`${name} is not valid for the resolved hull row.`);
-    else if (result.status === 'unavailable')
+    else if (
+      result.status === 'unavailable' &&
+      design.manualPerformance?.[kind]
+    ) {
+      const manual = design.manualPerformance[kind]!;
+      if (
+        !Number.isInteger(manual.rating) ||
+        manual.rating < 1 ||
+        manual.rating > 6 ||
+        !manual.provenance.trim()
+      ) {
+        bad(
+          `${name} referee performance requires a rating from 1 to 6 and provenance.`,
+        );
+      } else {
+        usedManual = true;
+        issues.push(`${name} uses referee performance: ${manual.provenance}.`);
+        return manual.rating;
+      }
+    } else if (result.status === 'unavailable')
       missing(
         `${name} performance is unavailable for this hull; reference data is incomplete.`,
       );
-    else if (!Number.isInteger(result.rating) || result.rating < 1)
+    else if (
+      !Number.isInteger(result.rating) ||
+      result.rating < 1 ||
+      result.rating > 6
+    )
       missing(`${name} catalog rating is invalid or unavailable.`);
     else return result.rating;
     return undefined;
@@ -211,7 +249,7 @@ export function assessVesselDesign(
       ? 'invalid'
       : incomplete
         ? 'incomplete'
-        : design.custom
+        : design.custom || usedManual
           ? 'custom'
           : 'assessed',
     issues,
