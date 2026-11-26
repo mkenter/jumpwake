@@ -144,3 +144,18 @@ export const classicTraveller1981 = createClassicTraveller1981Rules(
 );
 // Default-vessel conveniences for the existing presentation layer.
 export const { jumpFuelTons, fuelSources } = classicTraveller1981;
+
+export {
+  assessVesselDesign,
+  createHullRowResolver,
+  exampleDriveCatalog,
+} from './vesselDesign';
+export type {
+  Computer,
+  DesignAssessment,
+  DriveCatalog,
+  DriveKind,
+  DriveLetter,
+  DriveLookup,
+  VesselDesign,
+} from './vesselDesign';
