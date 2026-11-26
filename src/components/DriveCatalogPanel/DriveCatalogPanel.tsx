@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 import {
   assessVesselDesign,
   exampleDriveCatalog,
@@ -21,6 +21,7 @@ function load(): PrivateDriveCatalog | null {
   }
 }
 export function DriveCatalogPanel() {
+  const importVersion = useRef(0);
   const [catalog, setCatalog] = useState(load);
   const [message, setMessage] = useState('');
   const [hull, setHull] = useState(100);
@@ -54,19 +55,23 @@ export function DriveCatalogPanel() {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    const version = ++importVersion.current;
     try {
       const text = await file.text();
+      if (version !== importVersion.current) return;
       const next = parseDriveCatalog(text);
       localStorage.setItem(KEY, text);
       setCatalog(next);
       setMessage('Catalog imported locally.');
     } catch (error) {
+      if (version !== importVersion.current) return;
       setMessage(
         `Import failed: ${error instanceof Error ? error.message : 'storage unavailable'}`,
       );
     }
   }
   function remove() {
+    importVersion.current++;
     try {
       localStorage.removeItem(KEY);
       setCatalog(null);

@@ -69,7 +69,7 @@ export function createHullRowResolver(
       : undefined;
 }
 const unavailable: DriveLookup = { status: 'unavailable' };
-/** Only the examples supplied with DEV-58 are included; row adjacency is unknown. */
+/** Only the supplied verified example cells are included. */
 export const exampleDriveCatalog: DriveCatalog = {
   resolveHullRow: createHullRowResolver(
     [100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000],
