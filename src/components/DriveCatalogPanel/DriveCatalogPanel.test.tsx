@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MAX_DRIVE_CATALOG_BYTES } from '../../rules/classicTraveller1981/driveCatalog';
 import { DriveCatalogPanel } from './DriveCatalogPanel';
 
 const catalog = (provenance: string) =>
@@ -16,6 +17,23 @@ function deferredFile() {
 afterEach(() => localStorage.clear());
 
 describe('drive catalog imports', () => {
+  it('rejects an oversized selection without reading it or replacing the catalog', async () => {
+    localStorage.setItem(
+      'jumpwake.private-drive-catalog.v1',
+      catalog('Existing'),
+    );
+    render(<DriveCatalogPanel />);
+    const text = vi.fn();
+    fireEvent.change(screen.getByLabelText('Import drive catalog JSON'), {
+      target: { files: [{ size: MAX_DRIVE_CATALOG_BYTES + 1, text }] },
+    });
+    expect(text).not.toHaveBeenCalled();
+    expect(screen.getByRole('status')).toHaveTextContent('2 MiB');
+    expect(screen.getByText(/Source: Existing/)).toBeInTheDocument();
+    expect(localStorage.getItem('jumpwake.private-drive-catalog.v1')).toBe(
+      catalog('Existing'),
+    );
+  });
   it('does not let an earlier read replace a later selection or removal', async () => {
     render(<DriveCatalogPanel />);
     const input = screen.getByLabelText('Import drive catalog JSON');

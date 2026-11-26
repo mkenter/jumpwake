@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DRIVE_LETTERS,
   HULL_ROWS,
+  MAX_DRIVE_CATALOG_BYTES,
   catalogCoverage,
   makeDriveCatalog,
   parseDriveCatalog,
@@ -76,6 +77,14 @@ describe('private drive catalogs', () => {
       '{',
     ])
       expect(() => parseDriveCatalog(input)).toThrow();
+  });
+  it('bounds catalog text in UTF-8 bytes before parsing', () => {
+    expect(() =>
+      parseDriveCatalog('x'.repeat(MAX_DRIVE_CATALOG_BYTES + 1)),
+    ).toThrow('2 MiB');
+    expect(() =>
+      parseDriveCatalog(json({}) + 'é'.repeat(MAX_DRIVE_CATALOG_BYTES / 2)),
+    ).toThrow('2 MiB');
   });
   it('uses referee performance only for missing data, with provenance', () => {
     const manualPerformance = Object.fromEntries(

@@ -4,6 +4,7 @@ import {
   exampleDriveCatalog,
 } from '../../rules/classicTraveller1981/vesselDesign';
 import {
+  MAX_DRIVE_CATALOG_BYTES,
   catalogCoverage,
   makeDriveCatalog,
   parseDriveCatalog,
@@ -57,6 +58,8 @@ export function DriveCatalogPanel() {
     if (!file) return;
     const version = ++importVersion.current;
     try {
+      if (file.size > MAX_DRIVE_CATALOG_BYTES)
+        throw new Error('Catalog exceeds the 2 MiB limit');
       const text = await file.text();
       if (version !== importVersion.current) return;
       const next = parseDriveCatalog(text);

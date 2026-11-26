@@ -3,6 +3,7 @@ import { createHullRowResolver, type DriveCatalog } from './vesselDesign';
 export const HULL_ROWS = [
   100, 200, 400, 600, 800, 1000, 2000, 3000, 4000, 5000,
 ] as const;
+export const MAX_DRIVE_CATALOG_BYTES = 2 * 1024 * 1024;
 export const DRIVE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 export interface PrivateDriveCatalog {
   version: 1;
@@ -69,6 +70,11 @@ function rejectDuplicateKeys(text: string) {
 const object = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 export function parseDriveCatalog(text: string): PrivateDriveCatalog {
+  if (
+    text.length > MAX_DRIVE_CATALOG_BYTES ||
+    new TextEncoder().encode(text).byteLength > MAX_DRIVE_CATALOG_BYTES
+  )
+    throw new Error('Catalog exceeds the 2 MiB limit');
   rejectDuplicateKeys(text);
   const data: unknown = JSON.parse(text);
   if (
