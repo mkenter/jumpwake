@@ -1,5 +1,6 @@
 import type { SubsectorHex } from '../../engine/subsector';
 import type { FuelSource, TravelRules } from '../types';
+import { withRefereeOverrides, type WorldFacts } from '../worldFacts';
 
 /** Routing particulars only; this does not validate a complete CT ship design. */
 export interface ShipSpecifications {
@@ -27,8 +28,9 @@ export interface StarSystem {
   readonly id: string;
   readonly name: string;
   readonly hex: SubsectorHex;
-  readonly starport: Starport;
-  readonly gasGiant: boolean;
+  readonly starport: Starport | '?';
+  readonly gasGiant: boolean | null;
+  readonly facts?: WorldFacts;
   /** Referee override for the assumed availability of unrefined fuel at A/B ports. */
   readonly unrefinedFuelAvailable?: boolean;
 }
@@ -125,10 +127,13 @@ export function createClassicTraveller1981Rules(
         });
       return sources;
     },
+    canVisit(system: StarSystem) {
+      return system.facts?.travelProhibited !== true;
+    },
     validateSystem(system: StarSystem) {
       if (
-        !['A', 'B', 'C', 'D', 'E', 'X'].includes(system.starport) ||
-        typeof system.gasGiant !== 'boolean' ||
+        !['A', 'B', 'C', 'D', 'E', 'X', '?'].includes(system.starport) ||
+        (system.gasGiant !== null && typeof system.gasGiant !== 'boolean') ||
         (system.unrefinedFuelAvailable !== undefined &&
           (typeof system.unrefinedFuelAvailable !== 'boolean' ||
             !'AB'.includes(system.starport)))
@@ -159,3 +164,90 @@ export type {
   DriveLookup,
   VesselDesign,
 } from './vesselDesign';
+
+/** Book 3 pp. 7, 10, 16. UWP describes the main world only. */
+export function describeWorldFacts(facts: WorldFacts) {
+  const surface =
+    facts.hydrographics === null
+      ? 'Unknown'
+      : facts.hydrographics === 0
+        ? 'No surface coverage'
+        : facts.atmosphere === 0 || facts.atmosphere === 1
+          ? 'Ice caps'
+          : facts.atmosphere === null
+            ? 'Surface state unknown'
+            : 'Surface liquid; composition and open water unknown';
+  return {
+    size:
+      facts.size === null
+        ? 'Unknown'
+        : facts.size === 0
+          ? 'Belt'
+          : `${facts.size * 1600} km diameter`,
+    hydrographics:
+      facts.hydrographics === null
+        ? 'Unknown'
+        : `${facts.hydrographics * 10}% — ${surface}`,
+  };
+}
+
+/** Book 3 p. 10. */
+export function portFacilities(port: Starport | '?'): string {
+  switch (port) {
+    case 'A':
+    case 'B':
+      return 'Refined fuel and annual overhaul';
+    case 'C':
+      return 'Unrefined fuel and repairs';
+    case 'D':
+      return 'Unrefined fuel; no repairs';
+    case 'E':
+      return 'No facilities or fuel';
+    case 'X':
+      return 'No starport';
+    case '?':
+      return 'Unknown';
+  }
+}
+
+/** Apply a referee's missing fuel observations, recording their provenance. */
+export function withFuelOverrides(
+  system: StarSystem,
+  overrides: { starport?: Starport; gasGiants?: number },
+): StarSystem {
+  if (
+    overrides.starport !== undefined &&
+    (system.starport !== '?' ||
+      !['A', 'B', 'C', 'D', 'E', 'X'].includes(overrides.starport))
+  )
+    throw new Error('Invalid or already known starport');
+  if (
+    overrides.gasGiants !== undefined &&
+    (system.gasGiant !== null ||
+      !Number.isInteger(overrides.gasGiants) ||
+      overrides.gasGiants < 0 ||
+      overrides.gasGiants > 33)
+  )
+    throw new Error('Invalid or already known gas giant count');
+  if (!system.facts) throw new Error('World observations required');
+  const facts = withRefereeOverrides(system.facts, {
+    ...(overrides.gasGiants === undefined
+      ? {}
+      : { gasGiants: overrides.gasGiants }),
+  });
+  return {
+    ...system,
+    starport: overrides.starport ?? system.starport,
+    gasGiant:
+      overrides.gasGiants === undefined
+        ? system.gasGiant
+        : overrides.gasGiants > 0,
+    facts: {
+      ...facts,
+      refereeOverrides: [
+        ...(facts.refereeOverrides ?? []),
+        ...(overrides.starport === undefined ? [] : ['starport']),
+      ],
+    },
+  };
+}
