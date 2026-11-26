@@ -26,7 +26,7 @@ describe('vessel persistence', () => {
   it('round-trips a validated, versioned vessel', () => {
     expect(saveVessel(vessel)).toBe(true);
     expect(JSON.parse(localStorage.getItem(VESSEL_STORAGE_KEY)!)).toEqual({
-      version: 1,
+      version: 2,
       ...vessel,
     });
     expect(restoreVessel()).toEqual(vessel);
@@ -38,7 +38,7 @@ describe('vessel persistence', () => {
     'null',
     '[]',
     '{}',
-    JSON.stringify({ version: 2, ...vessel }),
+    JSON.stringify({ version: 3, ...vessel }),
     JSON.stringify({ version: 1, ship: null, state: vessel.state }),
     JSON.stringify({
       version: 1,
@@ -60,10 +60,29 @@ describe('vessel persistence', () => {
   ])('falls back for malformed, obsolete or invalid data: %s', (stored) => {
     expect(decodeVessel(stored)).toEqual(DEFAULT_VESSEL);
   });
-  it('keeps operational details out of version 1 storage', () => {
-    saveVessel({ ...vessel, design: { jumpDrive: 'A' } });
-    expect(restoreVessel()).toEqual(vessel);
-    expect(localStorage.getItem(VESSEL_STORAGE_KEY)).not.toContain('jumpDrive');
+  it('migrates legacy vessels and preserves operational particulars', () => {
+    expect(decodeVessel(JSON.stringify({ version: 1, ...vessel }))).toEqual(
+      vessel,
+    );
+    const operational = {
+      ...vessel,
+      design: {
+        jumpDrive: 'A',
+        custom: true,
+        manualPerformance: { jump: { rating: 2, provenance: 'Referee' } },
+      },
+    };
+    expect(saveVessel(operational)).toBe(true);
+    expect(restoreVessel()).toEqual(operational);
+    expect(
+      decodeVessel(
+        JSON.stringify({
+          version: 2,
+          ...vessel,
+          design: { manualPerformance: { jump: null } },
+        }),
+      ),
+    ).toEqual(DEFAULT_VESSEL);
   });
   it('works without browser storage access', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {

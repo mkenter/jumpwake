@@ -173,23 +173,28 @@ test('normal-motion reveal and sticky navigation retain focus and scroll', async
   expect(await page.evaluate('scrollY')).toBeGreaterThan(100);
 });
 
-test('operational particulars control routing and remain session-only', async ({
+test('operational particulars control routing and survive reload', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   const expectSummaryRow = async () => {
-    const heading = (await page
+    const positions = await page
       .getByRole('heading', { name: 'Vessel particulars' })
-      .boundingBox())!;
-    const edit = (await page
-      .getByRole('button', { name: 'Edit particulars' })
-      .boundingBox())!;
-    const notes = (await page
-      .getByText(/Route-only vessel:|Operational assessment applied/)
-      .boundingBox())!;
-    expect(edit.y).toBeLessThan(heading.y + heading.height);
-    expect(notes.y).toBeGreaterThanOrEqual(edit.y + edit.height);
+      .evaluate((heading) => {
+        const summary = heading.parentElement!;
+        const edit = summary.querySelector('button')!.getBoundingClientRect();
+        const notes = summary.querySelector('p')!.getBoundingClientRect();
+        const title = heading.getBoundingClientRect();
+        return {
+          titleBottom: title.bottom,
+          editTop: edit.top,
+          editBottom: edit.bottom,
+          notesTop: notes.top,
+        };
+      });
+    expect(positions.editTop).toBeLessThan(positions.titleBottom);
+    expect(positions.notesTop).toBeGreaterThanOrEqual(positions.editBottom);
   };
   await expectSummaryRow();
   await page.getByRole('button', { name: 'Edit particulars' }).click();
@@ -208,11 +213,15 @@ test('operational particulars control routing and remain session-only', async ({
   await expect(page.getByLabel('Active vessel')).toContainText('Jump-1');
   await expectSummaryRow();
   await expect(
-    page.getByText(/Operational details are not saved/),
+    page.getByText(/Operational particulars are saved and shared/),
   ).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Active vessel')).toContainText('Jump-1');
   await expect(
-    page.getByText(/Route-only vessel: operational particulars are incomplete/),
+    page.getByText(/Operational particulars retained/),
   ).toBeVisible();
+  await page.getByRole('button', { name: 'Edit particulars' }).click();
+  await expect(
+    page.getByLabel('Jump drive letter', { exact: true }),
+  ).toHaveValue('A');
 });

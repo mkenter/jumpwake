@@ -196,6 +196,39 @@ describe('VesselParticulars', () => {
     );
   });
 
+  it('rejects incomplete overrides even when catalog performance is available', async () => {
+    const { user, edit, onApply } = setup();
+    await user.click(edit);
+    await user.click(screen.getByLabelText('Assess operational particulars'));
+    for (const name of [
+      'Jump drive letter',
+      'Maneuver drive letter (enter none if absent)',
+      'Power plant letter',
+    ])
+      await user.type(screen.getByLabelText(name), 'A');
+    await user.type(screen.getByLabelText('Computer model'), '1');
+    await user.type(
+      screen.getByLabelText('Installed total tankage (tons)'),
+      '80',
+    );
+    await user.type(screen.getByLabelText('Referee jump source'), 'Referee');
+    await user.click(screen.getByRole('button', { name: 'Apply particulars' }));
+    expect(onApply).not.toHaveBeenCalled();
+    expect(screen.getByText(/Each referee override needs/)).toBeVisible();
+    await user.type(
+      screen.getByLabelText('Referee jump rating for unavailable data'),
+      '2',
+    );
+    await user.click(screen.getByRole('button', { name: 'Apply particulars' }));
+    expect(onApply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        design: expect.objectContaining({
+          manualPerformance: { jump: { rating: 2, provenance: 'Referee' } },
+        }),
+      }),
+    );
+  });
+
   it('prevents applying unavailable performance until a sourced referee override is provided', async () => {
     const { user, edit, onApply } = setup();
     await user.click(edit);
