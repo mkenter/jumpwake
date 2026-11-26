@@ -12,6 +12,7 @@ The project is under active development and is not a complete Traveller simulati
 
 - **Plots passages** on an interactive 8 × 10 subsector chart, with selectable worlds and a chronological journey manifest.
 - **Accounts for jump fuel**, ship range, partial fuel loads, fuel purchases, and gas-giant scooping.
+- **Plans ordered stops or specified jumps**, carrying fuel across the whole itinerary and identifying infeasible legs.
 - **Compares two routes:** lowest purchased fuel cost and fewest jumps. They are not always the same journey.
 - **Lets you configure your vessel**, including displacement, jump rating, fuel capacity, starting fuel, scoops, and streamlining. The applied ship is saved locally in the browser.
 - **Imports Traveller Map T5 tab-delimited data** from a local file, including subsectors from a whole sector. The last imported file and selected subsector are saved locally on the device when browser storage is available; files are not uploaded.

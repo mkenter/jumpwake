@@ -4,6 +4,7 @@ import { toAxial } from './subsector';
 
 // Resource limits for the generic whole-ton contract (CT configurations use ≤31 levels).
 const MAX_FUEL_LEVELS = 64;
+const MAX_STOPS = 30;
 const MAX_FUEL_TONS = 1_000_000;
 function wholeNumber(value: number, min: number, max: number, name: string) {
   if (!Number.isSafeInteger(value) || value < min || value > max)
@@ -67,6 +68,8 @@ export type RouteResult =
       readonly status: 'unreachable';
       readonly originId: string;
       readonly destinationId: string;
+      /** Zero-based index of the first target that cannot be reached in order. */
+      readonly failedLeg: number;
     };
 interface Label {
   cost: number;
@@ -199,7 +202,8 @@ export function createRouter<S extends RouteSystem>(
   );
   // Integer prices and a simple-state path bound keep every score exact in JS.
   const priceLimit = Math.floor(
-    Number.MAX_SAFE_INTEGER / (Math.max(1, systems.length) * width * capacity),
+    Number.MAX_SAFE_INTEGER /
+      (Math.max(1, systems.length) * width * capacity * (MAX_STOPS + 1)),
   );
   const sources = systems.map((s) => {
     const available = rules.fuelSources(s).map((source) => ({ ...source }));
@@ -223,29 +227,59 @@ export function createRouter<S extends RouteSystem>(
       originId: string,
       destinationId: string,
       preference: RoutingPreference = 'lowest-fuel-cost',
+      stops: readonly string[] = [],
+      mode: 'waypoints' | 'direct' = 'waypoints',
     ): RouteResult {
+      if (stops.length > MAX_STOPS) throw new RangeError('Too many stops');
+      if (mode !== 'waypoints' && mode !== 'direct')
+        throw new Error('Unknown itinerary mode');
       if (preference !== 'lowest-fuel-cost' && preference !== 'fewest-jumps')
         throw new Error('Unknown routing preference');
       const origin = ids.get(originId);
       const destination = ids.get(destinationId);
       if (origin === undefined || destination === undefined)
         throw new Error('Unknown system ID');
+      const targets = [...stops, destinationId].map((id) => {
+        const index = ids.get(id);
+        if (index === undefined) throw new Error('Unknown system ID');
+        return index;
+      });
+      const stateWidth = systems.length * width;
       const labels: (Label | undefined)[] = Array.from({
-        length: systems.length * width,
+        length: stateWidth * (targets.length + 1),
       });
       const settled = new Set<number>();
       const frontier = new Frontier(labels, preference);
-      const start = origin * width + levelIndices.get(initial)!;
+      const advance = (stage: number, world: number) => {
+        if (mode === 'direct')
+          return stage + (targets[stage] === world ? 1 : 0);
+        while (stage < targets.length && targets[stage] === world) stage++;
+        return stage;
+      };
+      const initialStage = mode === 'waypoints' ? advance(0, origin) : 0;
+      const start =
+        initialStage * stateWidth + origin * width + levelIndices.get(initial)!;
       labels[start] = { cost: 0, jumps: 0, distance: 0, key: [], events: [] };
       frontier.update(start);
+      let furthestStage = initialStage;
       while (true) {
         const state = frontier.pop();
         if (state === undefined)
-          return { status: 'unreachable', originId, destinationId };
+          return {
+            status: 'unreachable',
+            originId,
+            destinationId,
+            failedLeg: furthestStage,
+          };
         const label = labels[state]!;
-        const current = Math.floor(state / width);
+        const stage = Math.floor(state / stateWidth);
+        furthestStage = Math.max(furthestStage, stage);
+        const current = Math.floor((state % stateWidth) / width);
         const fuel = levels[state % width]!;
-        if (current === destination) {
+        if (
+          stage === targets.length ||
+          (targets.length === 1 && current === destination && label.jumps === 0)
+        ) {
           const segments: RouteEvent[][] = [];
           for (let step: Label | undefined = label; step; step = step.parent)
             segments.push(step.events);
@@ -265,13 +299,15 @@ export function createRouter<S extends RouteSystem>(
         for (const { target, distance, tons: consumed } of neighbors[
           current
         ]!) {
+          if (mode === 'direct' && target !== targets[stage]) continue;
           for (const [departureIndex, departure] of levels.entries()) {
             if (departure < fuel || departure < consumed) continue;
             if (departure > fuel && !source) continue;
             const arrivalIndex = levelIndices.get(departure - consumed);
             if (arrivalIndex === undefined)
               throw new Error('Fuel-state closure violated');
-            const next = target * width + arrivalIndex;
+            const nextStage = advance(stage, target);
+            const next = nextStage * stateWidth + target * width + arrivalIndex;
             if (settled.has(next)) continue;
             const tons = departure - fuel;
             const cost = tons * (source?.creditsPerTon ?? 0);

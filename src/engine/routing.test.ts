@@ -579,6 +579,7 @@ it('exhausts reachable free-scooping cycles when the destination is isolated', (
     status: 'unreachable',
     originId: 's',
     destinationId: 't',
+    failedLeg: 0,
   });
 });
 
@@ -874,7 +875,12 @@ it('handles large hulls and nonaligned fuel on a full 80-system subsector', () =
 it('preserves all 225 complete default Ember Reach results from main at 590c6c6', async () => {
   const router = createRouter(EMBER_REACH);
   const routes = EMBER_REACH.flatMap((a) =>
-    EMBER_REACH.map((b) => router.findRoute(a.id, b.id)),
+    EMBER_REACH.map((b) => {
+      const route = router.findRoute(a.id, b.id);
+      if (route.status === 'reachable') return route;
+      const { status, originId, destinationId } = route;
+      return { status, originId, destinationId };
+    }),
   );
   // Fingerprint includes every chronological event, transaction and fuel balance.
   const digest = await crypto.subtle.digest(
@@ -1001,6 +1007,146 @@ it('breaks a fewest-jumps tie by purchased credits before distance and itinerary
       ?.score,
   ).toEqual([0, 2, 6]);
   expectBalanced(systems, result);
+});
+
+describe('ordered itineraries', () => {
+  it('locates a final isolated destination after 30 waypoints on a 77-world chart', () => {
+    const systems = Array.from({ length: 80 }, (_, i) =>
+      system(`s${i}`, (i % 10) + 1, 'A', true, Math.floor(i / 10) + 1),
+    ).filter(({ id }) => !['s68', 's69', 's78'].includes(id));
+    const router = configured(
+      systems,
+      {
+        ...SHIP,
+        displacementTons: 100,
+        jumpRating: 1,
+        jumpFuelCapacityTons: 99,
+      },
+      99,
+    );
+    const waypoints = Array.from({ length: 30 }, (_, i) =>
+      i % 2 ? 's1' : 's0',
+    );
+    for (const preference of preferences) {
+      expect(
+        router.findRoute('s0', 's79', preference, waypoints),
+      ).toMatchObject({ status: 'unreachable', failedLeg: 30 });
+    }
+  });
+  it('reports the furthest feasible stage for fuel, geometry and duplicate direct legs', () => {
+    const router = createRouter([
+      system('a', 1),
+      system('b', 3),
+      system('c', 5),
+      system('d', 10, 'X', false, 8),
+    ]);
+    expect(
+      router.findRoute('a', 'c', 'fewest-jumps', ['b'], 'direct'),
+    ).toMatchObject({ status: 'unreachable', failedLeg: 1 });
+    expect(router.findRoute('a', 'd', 'fewest-jumps', ['b'])).toMatchObject({
+      status: 'unreachable',
+      failedLeg: 1,
+    });
+    expect(
+      router.findRoute('a', 'c', 'fewest-jumps', ['a'], 'direct'),
+    ).toMatchObject({ status: 'unreachable', failedLeg: 0 });
+    expect(
+      router.findRoute('a', 'c', 'fewest-jumps', ['b', 'b'], 'direct'),
+    ).toMatchObject({ status: 'unreachable', failedLeg: 1 });
+  });
+  it.each(preferences)(
+    'satisfies consecutive occupied waypoints without extra jumps (%s)',
+    (preference) => {
+      const router = createRouter([system('a', 1), system('b', 2)]);
+      const baseline = router.findRoute('a', 'b', preference);
+      expect(
+        router.findRoute('a', 'b', preference, ['a', 'a', 'b', 'b']),
+      ).toEqual(baseline);
+      expect(
+        reached(router.findRoute('a', 'a', preference, ['a'])).jumpCount,
+      ).toBe(0);
+      expect(stops(router.findRoute('a', 'a', preference, ['b']))).toEqual([
+        'b',
+        'a',
+      ]);
+      expect(
+        router.findRoute('a', 'b', preference, ['a'], 'direct').status,
+      ).toBe('unreachable');
+      expect(
+        router.findRoute('a', 'b', preference, ['b'], 'direct').status,
+      ).toBe('unreachable');
+    },
+  );
+  it('buys fuel before a waypoint when a later leg needs it', () => {
+    const rules = createClassicTraveller1981Rules(
+      {
+        displacementTons: 200,
+        jumpRating: 1,
+        jumpFuelCapacityTons: 40,
+        hasFuelScoops: false,
+        streamlined: true,
+      },
+      { initialFuelTons: 0 },
+    );
+    const router = createEngineRouter(
+      [system('a', 1, 'D'), system('b', 2), system('c', 3)],
+      rules,
+    );
+    const route = reached(
+      router.findRoute('a', 'c', 'lowest-fuel-cost', ['b']),
+    );
+    expect(route.events[0]).toMatchObject({
+      kind: 'refuel',
+      systemId: 'a',
+      tons: 40,
+    });
+    expect(route.fuelRemainingTons).toBe(0);
+  });
+  it('carries yacht fuel through successive jumps and supports revisits', () => {
+    // CT81 Book 2 p.19: yacht tankage supports two J1 jumps.
+    const rules = createClassicTraveller1981Rules(
+      {
+        displacementTons: 200,
+        jumpRating: 1,
+        jumpFuelCapacityTons: 40,
+        hasFuelScoops: false,
+        streamlined: true,
+      },
+      { initialFuelTons: 40 },
+    );
+    const router = createEngineRouter(
+      [system('a', 1), system('b', 2), system('c', 3)],
+      rules,
+    );
+    const route = reached(
+      router.findRoute('a', 'c', 'fewest-jumps', ['b'], 'direct'),
+    );
+    expect(
+      route.events.map(
+        (event) =>
+          event.kind === 'jump' && [event.fuelBeforeTons, event.fuelAfterTons],
+      ),
+    ).toEqual([
+      [40, 20],
+      [20, 0],
+    ]);
+    expect(
+      router.findRoute('a', 'a', 'fewest-jumps', ['b'], 'direct'),
+    ).toMatchObject({
+      status: 'reachable',
+      fuelRemainingTons: 0,
+      jumpCount: 2,
+    });
+    expect(
+      router.findRoute('a', 'c', 'fewest-jumps', ['b', 'a'], 'direct').status,
+    ).toBe('unreachable');
+    expect(
+      router.findRoute('a', 'c', 'fewest-jumps', [], 'direct').status,
+    ).toBe('unreachable');
+    expect(router.findRoute('a', 'c', 'fewest-jumps', ['b'])).toEqual(
+      router.findRoute('a', 'c', 'fewest-jumps', ['b']),
+    );
+  });
 });
 
 it('uses the port override to price fuel and preserves the jump ledger', () => {

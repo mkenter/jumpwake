@@ -15,6 +15,8 @@ import { WorldInspection, type Inspection } from './WorldInspection';
 import {
   createRouter,
   hasJumpChain,
+  hexDistance,
+  toAxial,
   type RoutingPreference,
 } from '../../engine';
 import { PassageComparison } from './PassageComparison';
@@ -71,6 +73,8 @@ export function PassageThree() {
     useState<RoutingPreference>('lowest-fuel-cost');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
+  const [stopsRequired, setStopsRequired] = useState<string[]>([]);
+  const [mode, setMode] = useState<'waypoints' | 'direct'>('waypoints');
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
   const [view, setView] = useState<'chart' | 'manifest'>('chart');
@@ -130,6 +134,8 @@ export function PassageThree() {
       setOrigin(link!.origin);
       setDestination(link!.destination);
       setPreference(link!.preference);
+      setStopsRequired(link!.stops ?? []);
+      setMode(link!.mode ?? 'waypoints');
       setLinkMessage(
         'Shared passage restored. Your saved vessel settings were not changed.',
       );
@@ -154,15 +160,19 @@ export function PassageThree() {
               origin,
               destination,
               'lowest-fuel-cost',
+              stopsRequired,
+              mode,
             ),
             'fewest-jumps': router.findRoute(
               origin,
               destination,
               'fewest-jumps',
+              stopsRequired,
+              mode,
             ),
           }
         : null,
-    [origin, destination, router],
+    [origin, destination, router, stopsRequired, mode],
   );
   const result = alternatives?.[preference] ?? null;
   const passage = result?.status === 'reachable' ? result : null;
@@ -184,12 +194,43 @@ export function PassageThree() {
   );
   const cost = passage?.totalCostCredits ?? 0;
   const distance = passage?.totalDistance ?? 0;
-  const unreachableReason =
-    result?.status === 'unreachable'
-      ? hasJumpChain(chart.worlds, origin, destination, ship.jumpRating)
-        ? 'Jump range is sufficient, but current fuel and refueling constraints prevent a passage.'
-        : `No chain of jumps reaches the destination at Jump-${ship.jumpRating}.`
+  const unreachableReason = useMemo(() => {
+    const failedLeg = result?.status === 'unreachable' ? result.failedLeg : -1;
+    return result?.status === 'unreachable'
+      ? failedLeg >= 0 && (stopsRequired.length > 0 || mode === 'direct')
+        ? (() => {
+            const from =
+              failedLeg === 0 ? origin : stopsRequired[failedLeg - 1]!;
+            const to = [...stopsRequired, destination][failedLeg]!;
+            const fromWorld = worlds.find((world) => world.id === from)!;
+            const toWorld = worlds.find((world) => world.id === to)!;
+            const distance = hexDistance(
+              toAxial(fromWorld.hex),
+              toAxial(toWorld.hex),
+            );
+            const geometryValid =
+              mode === 'direct'
+                ? distance > 0 &&
+                  distance <= ship.jumpRating &&
+                  rules.jumpFuelTons(distance) <= ship.jumpFuelCapacityTons
+                : hasJumpChain(chart.worlds, from, to, ship.jumpRating);
+            return `Leg ${failedLeg + 1}: ${fromWorld.name} to ${toWorld.name}. ${geometryValid ? 'Available fuel and refueling cannot support this leg.' : 'No valid jump route is within the ship’s range.'} Edit the itinerary to repair it.`;
+          })()
+        : hasJumpChain(chart.worlds, origin, destination, ship.jumpRating)
+          ? 'Jump range is sufficient, but current fuel and refueling constraints prevent a passage.'
+          : `No chain of jumps reaches the destination at Jump-${ship.jumpRating}.`
       : '';
+  }, [
+    result,
+    stopsRequired,
+    destination,
+    origin,
+    worlds,
+    mode,
+    ship,
+    rules,
+    chart,
+  ]);
   const status = !origin
     ? 'Choose an origin to begin.'
     : !destination
@@ -199,6 +240,7 @@ export function PassageThree() {
   function selectChart(next: Subsector) {
     setOrigin('');
     setDestination('');
+    setStopsRequired([]);
     setInspection(null);
     setHighlight(null);
     setChart(next);
@@ -374,6 +416,65 @@ export function PassageThree() {
               </select>
             </label>
           </div>
+          <fieldset>
+            <legend>Itinerary</legend>
+            <label>
+              Routing mode{' '}
+              <select
+                value={mode}
+                onChange={(event) =>
+                  setMode(event.target.value as 'waypoints' | 'direct')
+                }
+              >
+                <option value="waypoints">
+                  Required stops (automatic routes between)
+                </option>
+                <option value="direct">Specified successive jumps</option>
+              </select>
+            </label>
+            {stopsRequired.map((stop, index) => (
+              <div key={index}>
+                <label>
+                  Stop {index + 1}{' '}
+                  <select
+                    value={stop}
+                    onChange={(event) =>
+                      setStopsRequired((previous) =>
+                        previous.map((id, i) =>
+                          i === index ? event.target.value : id,
+                        ),
+                      )
+                    }
+                  >
+                    {worlds.map((world) => (
+                      <option key={world.id} value={world.id}>
+                        {world.name} · {address(world)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setStopsRequired((previous) =>
+                      previous.filter((_, i) => i !== index),
+                    )
+                  }
+                >
+                  Remove stop {index + 1}
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              disabled={stopsRequired.length >= 30 || worlds.length === 0}
+              onClick={() =>
+                setStopsRequired((previous) => [...previous, worlds[0]!.id])
+              }
+            >
+              Add stop
+            </button>
+          </fieldset>
           <VesselParticulars
             vessel={vessel}
             onApply={applyVessel}
@@ -409,6 +510,8 @@ export function PassageThree() {
                 origin,
                 destination,
                 preference,
+                stopsRequired,
+                mode,
               ])}
               chart={chart}
               imported={imported}
@@ -416,6 +519,8 @@ export function PassageThree() {
               origin={origin}
               destination={destination}
               preference={preference}
+              stopsRequired={stopsRequired}
+              mode={mode}
             />
           )}
           {alternatives?.['lowest-fuel-cost'].status === 'reachable' &&
@@ -649,6 +754,8 @@ function CopyPassageLink({
   origin,
   destination,
   preference,
+  stopsRequired,
+  mode,
 }: {
   chart: Subsector;
   imported: ImportedChart | null;
@@ -656,6 +763,8 @@ function CopyPassageLink({
   origin: string;
   destination: string;
   preference: RoutingPreference;
+  stopsRequired: string[];
+  mode: 'waypoints' | 'direct';
 }) {
   const [message, setMessage] = useState('');
   async function copy() {
@@ -670,7 +779,9 @@ function CopyPassageLink({
               hint: imported!.source.slice(0, 120),
             };
       const payload = encodePassage({
-        version: 1,
+        version: 2,
+        stops: stopsRequired,
+        mode,
         chart: identity,
         vessel,
         origin,

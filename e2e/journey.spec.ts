@@ -398,3 +398,23 @@ test('touch inspection, endpoint actions and responsive state retention', async 
   ).toBeVisible();
   await context.close();
 });
+
+test('repairs an infeasible specified itinerary', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('combobox', { name: 'Origin' }).selectOption('aster');
+  await page
+    .getByRole('combobox', { name: 'Destination' })
+    .selectOption('cinder');
+  await page
+    .getByRole('combobox', { name: 'Routing mode' })
+    .selectOption('direct');
+  await expect(page.getByRole('status')).toContainText('Leg 1');
+  await page.getByRole('button', { name: 'Add stop' }).click();
+  await expect(page.getByRole('status')).toContainText(
+    'Leg 1: Aster Quay to Aster Quay',
+  );
+  await page.getByRole('combobox', { name: 'Stop 1' }).selectOption('brass');
+  await expect(page.getByRole('status')).toContainText('2 jumps');
+  await page.getByRole('button', { name: 'Remove stop 1' }).click();
+  await expect(page.getByRole('status')).toContainText('Leg 1');
+});

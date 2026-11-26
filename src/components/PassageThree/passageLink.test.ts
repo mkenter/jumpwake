@@ -27,6 +27,19 @@ describe('passage links', () => {
       false,
     );
   });
+  it('round trips ordered stops and the itinerary mode', () => {
+    const itinerary: PassageLink = {
+      ...link,
+      version: 2,
+      stops: ['brass'],
+      mode: 'direct',
+    };
+    expect(decodePassage(encodePassage(itinerary))).toEqual(itinerary);
+    expect(passageMatchesChart(itinerary, demoChart)).toBe(true);
+    expect(
+      passageMatchesChart({ ...itinerary, stops: ['missing'] }, demoChart),
+    ).toBe(false);
+  });
   it('rejects malformed, oversized, unsupported and invalid vessel payloads', () => {
     expect(decodePassage('!')).toBeNull();
     expect(decodePassage('a'.repeat(2049))).toBeNull();
