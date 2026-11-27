@@ -616,3 +616,73 @@ describe('world profiles', () => {
     expect(within(inspector).getByText('Synthetic')).toBeVisible();
   });
 });
+
+describe('return passage', () => {
+  it('enables swapping only for distinct selected endpoints and recalculates unreachable routes', async () => {
+    const { user } = await passage();
+    const swap = screen.getByRole('button', { name: 'Swap endpoints' });
+    const origin = screen.getByRole('combobox', { name: 'Origin' });
+    const destination = screen.getByRole('combobox', { name: 'Destination' });
+    await user.selectOptions(destination, '');
+    expect(swap).toBeDisabled();
+    await user.selectOptions(destination, 'aster');
+    expect(swap).toBeDisabled();
+    await user.selectOptions(destination, 'last');
+    expect(swap).toBeEnabled();
+    await user.click(swap);
+    expect(origin).toHaveValue('last');
+    expect(destination).toHaveValue('aster');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Destination unreachable',
+    );
+  });
+
+  it.each(['waypoints', 'direct'] as const)(
+    'reverses selected stops and recalculates both alternatives in %s mode',
+    async (mode) => {
+      const actualCreateRouter = engine.createRouter;
+      const findRoute = vi.fn();
+      vi.spyOn(engine, 'createRouter').mockImplementation((systems, rules) => {
+        const router = actualCreateRouter(systems, rules);
+        findRoute.mockImplementation(router.findRoute);
+        return { ...router, findRoute };
+      });
+      const { user } = await passage();
+      for (const name of ['Brass Ledger', 'Drift Lantern']) {
+        await user.click(
+          screen.getByRole('button', { name: new RegExp(`Inspect ${name},`) }),
+        );
+        await user.click(
+          screen.getByRole('button', { name: 'Add required waypoint' }),
+        );
+      }
+      await user.selectOptions(
+        screen.getByRole('combobox', { name: 'Routing mode' }),
+        mode,
+      );
+      findRoute.mockClear();
+      await user.click(screen.getByRole('button', { name: 'Swap endpoints' }));
+      expect(screen.getByRole('combobox', { name: 'Stop 1' })).toHaveValue(
+        'drift',
+      );
+      expect(screen.getByRole('combobox', { name: 'Stop 2' })).toHaveValue(
+        'brass',
+      );
+      expect(findRoute).toHaveBeenCalledTimes(2);
+      expect(findRoute).toHaveBeenCalledWith(
+        'cinder',
+        'aster',
+        'lowest-fuel-cost',
+        ['drift', 'brass'],
+        mode,
+      );
+      expect(findRoute).toHaveBeenCalledWith(
+        'cinder',
+        'aster',
+        'fewest-jumps',
+        ['drift', 'brass'],
+        mode,
+      );
+    },
+  );
+});
