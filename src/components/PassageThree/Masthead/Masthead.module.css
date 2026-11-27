@@ -47,7 +47,7 @@
   z-index: 20;
   display: flex;
   align-items: center;
-  min-height: 60px;
+  min-height: var(--desktop-navigation-height);
   background: var(--paper);
   border-top: 1px solid var(--line);
   border-bottom: 3px double var(--gold-line);

@@ -39,7 +39,7 @@ for (const source of ['chart', 'manifest'] as const) {
         await expect(dialog).toContainText('Events 8, 9, 12, 13');
         await page.keyboard.press('Shift+Tab');
         await expect(
-          dialog.getByRole('button', { name: 'Set destination' }),
+          dialog.getByRole('button', { name: 'Add required waypoint' }),
         ).toBeFocused();
         await page.keyboard.press('Tab');
         await expect(close).toBeFocused();

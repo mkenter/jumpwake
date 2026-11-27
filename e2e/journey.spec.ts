@@ -194,14 +194,16 @@ for (const [width, height] of [
     );
     await capture('selected-serein-inspection');
     if (width < 900) {
-      await inspector.getByRole('button', { name: 'Set destination' }).focus();
+      await inspector
+        .getByRole('button', { name: 'Add required waypoint' })
+        .focus();
       await page.keyboard.press('Tab');
       await expect(
         inspector.getByRole('button', { name: 'Close world details' }),
       ).toBeFocused();
       await page.keyboard.press('Shift+Tab');
       await expect(
-        inspector.getByRole('button', { name: 'Set destination' }),
+        inspector.getByRole('button', { name: 'Add required waypoint' }),
       ).toBeFocused();
     }
     await inspector
@@ -336,7 +338,7 @@ for (const [width, height] of [
     await page.keyboard.press('Space');
     await expect(inspector).toContainText('No local fuel');
     await inspector.getByRole('button', { name: 'Set destination' }).click();
-    await expect(destination).toBeFocused();
+    await expect(chartWorld('Last Ember')).toBeFocused();
     await expect(status).toContainText('Destination unreachable');
     await switchView('Manifest');
     await expect(manifest.getByRole('listitem')).toHaveCount(0);
@@ -405,6 +407,7 @@ test('repairs an infeasible specified itinerary', async ({ page }) => {
   await page
     .getByRole('combobox', { name: 'Destination' })
     .selectOption('cinder');
+  await page.getByText('Advanced routing').click();
   await page
     .getByRole('combobox', { name: 'Routing mode' })
     .selectOption('direct');
@@ -418,3 +421,157 @@ test('repairs an infeasible specified itinerary', async ({ page }) => {
   await page.getByRole('button', { name: 'Remove stop 1' }).click();
   await expect(page.getByRole('status')).toContainText('Leg 1');
 });
+
+for (const width of [390, 1440]) {
+  test(`chart selections preserve the viewport at ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/');
+    const chart = page.locator('#passage-chart');
+    const choose = async (name: string, action: string) => {
+      const world = chart.getByRole('button', {
+        name: new RegExp(`Inspect ${name},`),
+      });
+      await world.scrollIntoViewIfNeeded();
+      await world.focus();
+      await page.keyboard.press('Enter');
+      const button = page.getByRole('button', { name: action, exact: true });
+      await button.scrollIntoViewIfNeeded();
+      const before = await world.evaluate(
+        (element) => element.getBoundingClientRect().top,
+      );
+      await button.click();
+      await expect(world).toBeFocused();
+      await expect
+        .poll(async () =>
+          Math.abs(
+            (await world.evaluate(
+              (element) => element.getBoundingClientRect().top,
+            )) - before,
+          ),
+        )
+        .toBeLessThan(3);
+      await expect(chart).toBeVisible();
+    };
+    await choose('Aster Quay', 'Set origin');
+    await choose('Cinder Rest', 'Set destination');
+    await choose('Brass Ledger', 'Add required waypoint');
+    await expect(page.getByRole('combobox', { name: 'Stop 1' })).toHaveValue(
+      'brass',
+    );
+    await page.getByRole('button', { name: 'Add stop', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Stop 2' }).selectOption('drift');
+    await page.getByRole('button', { name: 'Move stop 2 earlier' }).click();
+    await expect(page.getByRole('combobox', { name: 'Stop 1' })).toHaveValue(
+      'drift',
+    );
+    await page.getByRole('button', { name: 'Remove stop 1' }).click();
+    await expect(page.getByRole('combobox', { name: 'Stop 1' })).toHaveValue(
+      'brass',
+    );
+  });
+}
+
+test('desktop inspection remains visible and manifest selections restore focus', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 700 });
+  await page.goto('/');
+  await page.getByRole('combobox', { name: 'Origin' }).selectOption('aster');
+  await page
+    .getByRole('combobox', { name: 'Destination' })
+    .selectOption('cinder');
+  const world = page.getByRole('button', { name: /^Inspect Last Ember,/ });
+  await world.scrollIntoViewIfNeeded();
+  await world.click();
+  const inspector = page.getByRole('complementary', {
+    name: 'World inspection',
+  });
+  const heading = inspector.getByRole('heading');
+  await expect(heading).toBeFocused();
+  const bounds = await heading.evaluate((element) =>
+    element.getBoundingClientRect().toJSON(),
+  );
+  expect(bounds.top).toBeGreaterThanOrEqual(0);
+  expect(bounds.bottom).toBeLessThanOrEqual(700);
+  await inspector.getByRole('button', { name: 'Close world details' }).click();
+  const event = page.getByRole('button', { name: /^Inspect event 2,/ });
+  await event.click();
+  await inspector
+    .getByRole('button', { name: 'Set origin', exact: true })
+    .click();
+  await expect(page.getByRole('combobox', { name: 'Origin' })).toBeFocused();
+});
+
+test('switching desktop worlds resets inspector scroll without moving the page', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 400 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await page.getByText('Chart bureau ·').click();
+  const remark = 'Long observation '.repeat(40);
+  await page.getByLabel('Load navigation chart').setInputFiles({
+    name: 'long.tab',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(
+      `Hex\tName\tUWP\tPBG\tRemarks\n0101\tFirst\tA000000-0\t001\t${remark}\n0102\tSecond\tA000000-0\t001\t${remark}\n`,
+    ),
+  });
+  const first = page.locator('[data-world="hex-0101"]');
+  const second = page.locator('[data-world="hex-0102"]');
+  await first.scrollIntoViewIfNeeded();
+  await first.click();
+  const inspector = page.getByRole('complementary', {
+    name: 'World inspection',
+  });
+  const scrolled = await inspector.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+    return element.scrollTop;
+  });
+  expect(scrolled).toBeGreaterThan(0);
+  await second.scrollIntoViewIfNeeded();
+  const pageY = await page.evaluate<number>('window.scrollY');
+  await second.click();
+  const heading = inspector.getByRole('heading');
+  await expect(heading).toContainText('Second');
+  await expect(heading).toBeFocused();
+  expect(await inspector.evaluate((element) => element.scrollTop)).toBe(0);
+  expect(await page.evaluate<number>('window.scrollY')).toBe(pageY);
+  const bounds = (await heading.boundingBox())!;
+  const inspectorBounds = (await inspector.boundingBox())!;
+  expect(bounds.y).toBeGreaterThanOrEqual(inspectorBounds.y);
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(
+    inspectorBounds.y + inspectorBounds.height,
+  );
+});
+
+for (const width of [1024, 1440]) {
+  test(`desktop inspector remains clickable beneath condensed navigation at ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 700 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    const world = page.getByRole('button', { name: /^Inspect Last Ember,/ });
+    await world.scrollIntoViewIfNeeded();
+    const nav = page.getByRole('navigation', { name: 'Planner navigation' });
+    await expect(nav).toHaveAttribute('data-condensed', 'true');
+    await world.click();
+    const inspector = page.getByRole('complementary', {
+      name: 'World inspection',
+    });
+    const close = inspector.getByRole('button', {
+      name: 'Close world details',
+    });
+    const navBounds = (await nav.boundingBox())!;
+    const closeBounds = (await close.boundingBox())!;
+    expect(closeBounds.y).toBeGreaterThanOrEqual(
+      navBounds.y + navBounds.height,
+    );
+    await close.click();
+    await expect(inspector).toBeHidden();
+    await expect(world).toBeFocused();
+  });
+}

@@ -6,6 +6,7 @@
   --gold: #c59b6c;
   --gold-line: #c8b18e;
   --paper: #f5f4ef;
+  --desktop-navigation-height: 60px;
   color: var(--ink);
   background: var(--paper);
   min-height: 100vh;
@@ -516,4 +517,45 @@
 .copyControl > span {
   font-size: 10px;
   color: var(--muted);
+}
+
+.itinerary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 8px 16px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.itinerary button,
+.itinerary select,
+.itinerary summary {
+  min-height: 36px;
+  font: inherit;
+}
+.itinerary button,
+.itinerary select {
+  border: 1px solid var(--line);
+  background: transparent;
+  padding: 4px 8px;
+}
+.itinerary summary {
+  cursor: pointer;
+  padding: 9px 0;
+}
+.itinerary details p {
+  max-width: 360px;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+.requiredStops {
+  margin: 6px 0;
+  padding-left: 24px;
+}
+.requiredStops li {
+  padding: 3px 0;
+}
+.requiredStops li > * {
+  margin-right: 4px;
 }

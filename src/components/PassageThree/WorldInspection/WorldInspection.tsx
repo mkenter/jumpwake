@@ -20,7 +20,9 @@ type Props = {
   hasPassage: boolean;
   rules: TravelRules<StarSystem>;
   onClose: () => void;
-  onUseWorld: (endpoint: 'origin' | 'destination') => void;
+  onUseWorld: (endpoint: 'origin' | 'destination' | 'waypoint') => void;
+  canAddWaypoint: boolean;
+  mode: 'waypoints' | 'direct';
 };
 
 export function WorldInspection({
@@ -34,8 +36,11 @@ export function WorldInspection({
   rules,
   onClose,
   onUseWorld,
+  canAddWaypoint,
+  mode,
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const inspectorRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const reduced = useReducedMotion();
   const world = worlds.find((w) => w.id === inspection.id)!;
@@ -43,7 +48,8 @@ export function WorldInspection({
   useEffect(() => {
     const dialog = dialogRef.current;
     if (compact) dialog?.showModal();
-    headingRef.current?.focus({ preventScroll: compact });
+    else if (inspectorRef.current) inspectorRef.current.scrollTop = 0;
+    headingRef.current?.focus({ preventScroll: true });
     return () => {
       dialog?.close();
     };
@@ -149,6 +155,14 @@ export function WorldInspection({
         >
           {world.id === destination ? 'Current destination' : 'Set destination'}
         </button>
+        <button
+          disabled={!canAddWaypoint}
+          onClick={() => onUseWorld('waypoint')}
+        >
+          {mode === 'direct'
+            ? 'Add successive jump stop'
+            : 'Add required waypoint'}
+        </button>
       </div>
     </motion.div>
   );
@@ -186,6 +200,7 @@ export function WorldInspection({
     </dialog>
   ) : (
     <aside
+      ref={inspectorRef}
       className={styles.inspector}
       aria-label="World inspection"
       onKeyDown={(event) => {
