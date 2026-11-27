@@ -503,3 +503,32 @@ test('desktop inspection remains visible and manifest selections restore focus',
     .click();
   await expect(page.getByRole('combobox', { name: 'Origin' })).toBeFocused();
 });
+
+for (const width of [1024, 1440]) {
+  test(`desktop inspector remains clickable beneath condensed navigation at ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 700 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    const world = page.getByRole('button', { name: /^Inspect Last Ember,/ });
+    await world.scrollIntoViewIfNeeded();
+    const nav = page.getByRole('navigation', { name: 'Planner navigation' });
+    await expect(nav).toHaveAttribute('data-condensed', 'true');
+    await world.click();
+    const inspector = page.getByRole('complementary', {
+      name: 'World inspection',
+    });
+    const close = inspector.getByRole('button', {
+      name: 'Close world details',
+    });
+    const navBounds = (await nav.boundingBox())!;
+    const closeBounds = (await close.boundingBox())!;
+    expect(closeBounds.y).toBeGreaterThanOrEqual(
+      navBounds.y + navBounds.height,
+    );
+    await close.click();
+    await expect(inspector).toBeHidden();
+    await expect(world).toBeFocused();
+  });
+}

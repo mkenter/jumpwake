@@ -6,6 +6,7 @@
   --gold: #c59b6c;
   --gold-line: #c8b18e;
   --paper: #f5f4ef;
+  --desktop-navigation-height: 60px;
   color: var(--ink);
   background: var(--paper);
   min-height: 100vh;
