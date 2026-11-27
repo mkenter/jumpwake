@@ -122,7 +122,7 @@ test('imported ship eligibility, comparison, manifest, unreachable and touch ins
   await page.getByRole('radio', { name: /Fewest jumps/ }).check();
   await expect(page.getByRole('status').first()).toContainText('Cr6,000');
   await expect(
-    page.getByText('Buy 60 t unrefined fuel at Cr100/t'),
+    page.getByText('Buy 60 t unrefined fuel from starport at Cr100/t'),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Edit particulars' }).click();
   await page.getByLabel('Fuel scoops fitted').uncheck();

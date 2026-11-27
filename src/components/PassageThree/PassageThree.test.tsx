@@ -123,9 +123,9 @@ describe('applied vessel and passage integration', () => {
     const { user, manifest, edit, apply } = await passage();
     expect(screen.getByRole('status')).toHaveTextContent('3 jumps · 7 pc');
     expect(screen.getByRole('status')).toHaveTextContent('Cr0');
-    expect(within(manifest).getAllByRole('listitem')).toHaveLength(6);
+    expect(within(manifest).getAllByRole('listitem')).toHaveLength(4);
     await user.click(
-      screen.getByRole('button', { name: 'Inspect event 3, Drift Lantern' }),
+      screen.getByRole('button', { name: 'Inspect visit 2, Drift Lantern' }),
     );
     expect(
       screen.getByRole('complementary', { name: 'World inspection' }),
@@ -160,7 +160,7 @@ describe('applied vessel and passage integration', () => {
     );
     await apply();
     expect(screen.getByRole('status')).toHaveTextContent('3 jumps · 7 pc');
-    expect(within(manifest).getAllByRole('listitem')).toHaveLength(6);
+    expect(within(manifest).getAllByRole('listitem')).toHaveLength(4);
   });
 
   it('uses partial starting fuel in costs, departure events, notes and persistence', async () => {
@@ -171,10 +171,10 @@ describe('applied vessel and passage integration', () => {
     await user.type(fuel, '13');
     await apply();
     expect(screen.getByRole('status')).toHaveTextContent('Cr2,700');
-    expect(manifest).toHaveTextContent('13 t aboard');
-    expect(manifest).toHaveTextContent('Depart with available jump fuel');
+    expect(manifest).toHaveTextContent('Arrival: 13 t');
+    expect(manifest).toHaveTextContent('Departure: 40 t');
     expect(manifest).toHaveTextContent('Buy 27 t unrefined fuel');
-    expect(manifest).toHaveTextContent('Initial 13 t is a sunk cost');
+    expect(manifest).toHaveTextContent('Initial fuel is a sunk cost');
     expect(screen.getByLabelText('Active vessel')).toHaveTextContent(
       '13/60 tons jump fuel',
     );
@@ -224,7 +224,7 @@ describe('applied vessel and passage integration', () => {
       'cinder',
     );
     expect(screen.getByRole('status')).toHaveTextContent('0 jumps');
-    expect(manifest).toHaveTextContent('0 t aboard');
+    expect(manifest).toHaveTextContent('Arrival: 0 t');
     expect(manifest).toHaveTextContent('Already at your destination');
   });
 
@@ -316,10 +316,10 @@ describe('passage preferences', () => {
       (node) => node.getAttribute('d'),
     );
     await user.hover(
-      screen.getByRole('button', { name: 'Inspect event 3, Drift Lantern' }),
+      screen.getByRole('button', { name: 'Inspect visit 2, Drift Lantern' }),
     );
     await user.click(
-      screen.getByRole('button', { name: 'Inspect event 3, Drift Lantern' }),
+      screen.getByRole('button', { name: 'Inspect visit 2, Drift Lantern' }),
     );
     await user.click(fewer);
     expect(fewer).toBeChecked();
@@ -332,21 +332,23 @@ describe('passage preferences', () => {
     );
     expect(document.querySelectorAll('[data-route-leg]')).toHaveLength(2);
     expect(document.querySelectorAll('[data-route-arrow]')).toHaveLength(2);
-    expect(within(manifest).getAllByRole('listitem')).toHaveLength(4);
-    expect(manifest).toHaveTextContent('Buy 60 t unrefined fuel at Cr100/t');
+    expect(within(manifest).getAllByRole('listitem')).toHaveLength(3);
+    expect(manifest).toHaveTextContent(
+      'Buy 60 t unrefined fuel from starport at Cr100/t',
+    );
     expect(manifest).toHaveTextContent('Arrival: 0 t');
     expect(manifest).not.toHaveTextContent('Drift Lantern');
     expect(manifest).not.toHaveTextContent('Scoop');
     await user.click(
-      screen.getByRole('button', { name: 'Inspect event 3, Brass Ledger' }),
+      screen.getByRole('button', { name: 'Inspect visit 2, Brass Ledger' }),
     );
     expect(screen.getByRole('complementary')).toHaveTextContent(
-      'Events 2, 3 on your passage',
+      'Visits 2 on your passage',
     );
     await user.click(economical);
     expect(screen.getByRole('status')).toHaveTextContent('3 jumps · 7 pc');
     expect(screen.getByRole('status')).toHaveTextContent('Cr0');
-    expect(within(manifest).getAllByRole('listitem')).toHaveLength(6);
+    expect(within(manifest).getAllByRole('listitem')).toHaveLength(4);
     expect(
       Array.from(document.querySelectorAll('[data-route-leg]'), (node) =>
         node.getAttribute('d'),
@@ -405,7 +407,7 @@ describe('passage preferences', () => {
     ).toHaveAccessibleName('Lowest fuel cost, 3 jumps, Cr2,700 purchased fuel');
     expect(screen.getByRole('radio', { name: /^Fewest jumps/ })).toBeChecked();
     expect(screen.getByRole('status')).toHaveTextContent('Cr10,700');
-    expect(manifest).toHaveTextContent('13 t aboard');
+    expect(manifest).toHaveTextContent('Arrival: 13 t');
     await user.click(screen.getByRole('radio', { name: /^Lowest fuel cost/ }));
     expect(screen.getByRole('status')).toHaveTextContent('Cr2,700');
     await edit();
@@ -476,7 +478,7 @@ describe('copy passage', () => {
     expect(first).toContain('Source: Original fictional demonstration');
     expect(first).toContain('Routing: Lowest fuel cost');
     expect(first).toContain('Starting jump fuel:');
-    expect(first).toContain('## Events');
+    expect(first).toContain('## Voyage');
     expect(first).toContain('1. **Aster Quay**');
     expect(screen.getByText('Passage copied to clipboard.')).toBeVisible();
     await user.click(screen.getByRole('radio', { name: /^Fewest jumps/ }));

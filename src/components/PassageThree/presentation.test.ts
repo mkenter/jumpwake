@@ -12,6 +12,7 @@ import {
   point,
   routeStops as formatStops,
   presentWorlds,
+  presentVoyage,
 } from './presentation';
 const router = createRouter(EMBER_REACH, classicTraveller1981);
 describe('calculated passage presentation', () => {
@@ -63,6 +64,24 @@ describe('calculated passage presentation', () => {
     expect(routeStops(same)).toHaveLength(1);
     expect(routeStops(same)[0]?.action).toContain(
       'Already at your destination',
+    );
+  });
+  it('groups consecutive transactions and reconciles fuel across revisits', () => {
+    const result = router.findRoute('aster', 'orison');
+    if (result.status !== 'reachable') throw new Error('Expected route');
+    const voyage = presentVoyage(result, 60);
+    expect(
+      voyage.visits.filter((visit) => visit.world === 'serein'),
+    ).toHaveLength(2);
+    expect(voyage.legs).toHaveLength(result.jumpCount);
+    expect(60 - voyage.consumed + voyage.purchased + voyage.scooped).toBe(
+      voyage.remaining,
+    );
+    const transaction = result.events.find((event) => event.kind === 'refuel')!;
+    if (transaction.kind !== 'refuel') throw new Error('Expected refuel');
+    const synthetic = { ...result, events: [transaction, transaction] };
+    expect(presentVoyage(synthetic, 60).visits[0]!.transactions).toHaveLength(
+      2,
     );
   });
   it('derives facilities from the authoritative data', () => {
@@ -133,20 +152,17 @@ describe('passage Markdown', () => {
       preference: 'lowest-fuel-cost',
       ship: SHIP,
       state: INITIAL_STATE,
-      stops: formatStops(result, lookup),
       worldById: lookup,
     });
     expect(text).toContain('Chart \\#1');
     expect(text).toContain('Source \\[A\\]');
     const eventLines = text.split('\n').filter((line) => /^\d+\. /.test(line));
-    expect(eventLines).toHaveLength(14);
+    expect(eventLines).toHaveLength(8);
     expect(
       eventLines.filter((line) => line.includes('**Serein \\*\\[port\\]\\***')),
-    ).toHaveLength(4);
-    expect(eventLines.filter((line) => /\d+ pc jump;/.test(line))).toHaveLength(
-      result.jumpCount,
-    );
-    expect(eventLines[9]).toContain('Ilex');
-    expect(eventLines[11]).toContain('Serein');
+    ).toHaveLength(2);
+    expect(text.match(/ {3}- Jump /g)).toHaveLength(result.jumpCount);
+    expect(eventLines[5]).toContain('Ilex');
+    expect(eventLines[6]).toContain('Serein');
   });
 });

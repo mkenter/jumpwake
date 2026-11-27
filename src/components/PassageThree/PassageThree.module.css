@@ -294,6 +294,14 @@
   margin-top: 5px;
   line-height: 1.4;
 }
+.purchasedFuel {
+  border-left: 2px solid var(--accent);
+  padding-left: 8px;
+}
+.scoopedFuel {
+  border-left: 2px dashed var(--muted);
+  padding-left: 8px;
+}
 .stopFuel {
   font-size: 10px;
   color: var(--muted);

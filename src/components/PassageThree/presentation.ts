@@ -1,5 +1,10 @@
 import type { ChartWorld, Subsector } from '../../import/subsector';
-import type { RouteResult, RoutingPreference } from '../../engine';
+import type {
+  RouteResult,
+  RoutingPreference,
+  FuelTransaction,
+  Jump,
+} from '../../engine';
 import type { FuelSource } from '../../rules/types';
 import {
   fuelSources,
@@ -81,6 +86,63 @@ export function routeStops(
     })),
   ];
 }
+export type VoyageVisit = {
+  world: string;
+  arrival: number;
+  departure: number;
+  transactions: FuelTransaction[];
+};
+
+export function presentVoyage(
+  passage: Extract<RouteResult, { status: 'reachable' }>,
+  initialFuel: number,
+) {
+  const visits: VoyageVisit[] = [
+    {
+      world: passage.originId,
+      arrival: initialFuel,
+      departure: initialFuel,
+      transactions: [],
+    },
+  ];
+  const legs: Jump[] = [];
+  let consumed = 0,
+    purchased = 0,
+    scooped = 0;
+  for (const event of passage.events) {
+    const visit = visits[visits.length - 1]!;
+    if (event.kind === 'refuel') {
+      visit.transactions.push(event);
+      visit.departure = event.fuelAfterTons;
+      if (event.source === 'gas-giant') scooped += event.tons;
+      else purchased += event.tons;
+    } else {
+      visit.departure = event.fuelBeforeTons;
+      consumed += event.fuelConsumedTons;
+      legs.push(event);
+      visits.push({
+        world: event.toId,
+        arrival: event.fuelAfterTons,
+        departure: event.fuelAfterTons,
+        transactions: [],
+      });
+    }
+  }
+  return {
+    visits,
+    legs,
+    consumed,
+    purchased,
+    scooped,
+    remaining: passage.fuelRemainingTons,
+  };
+}
+
+export function transactionText(event: FuelTransaction) {
+  return event.source === 'gas-giant'
+    ? `Scoop ${event.tons} t ${event.grade} fuel from gas giant · free`
+    : `Buy ${event.tons} t ${event.grade} fuel from ${event.source} at Cr${event.creditsPerTon}/t · ${credits(event.costCredits)}`;
+}
 // Presentation-only projection shared by hexes, routes and interaction targets.
 // Engine addresses and distances are unaffected; glyphs are not stretched.
 const rowScale = 1.1;
@@ -109,7 +171,6 @@ export function passageMarkdown({
   preference,
   ship,
   state,
-  stops,
   worldById,
 }: {
   chart: Subsector;
@@ -117,13 +178,13 @@ export function passageMarkdown({
   preference: RoutingPreference;
   ship: ShipSpecifications;
   state: ShipOperatingState;
-  stops: readonly Stop[];
   worldById: (id: string) => PresentedWorld;
 }): string {
   const escape = (value: string) =>
     value.replace(/[\\`*_{}[\]<>#+.!|~-]/g, '\\$&').replace(/[\r\n]+/g, ' ');
   const origin = worldById(passage.originId);
   const destination = worldById(passage.destinationId);
+  const voyage = presentVoyage(passage, state.initialFuelTons);
   return [
     `# Passage: ${escape(origin.name)} to ${escape(destination.name)}`,
     '',
@@ -138,10 +199,21 @@ export function passageMarkdown({
     `- Distance: ${passage.totalDistance} pc`,
     `- Purchased fuel: ${credits(passage.totalCostCredits)}`,
     '',
-    '## Events',
-    ...stops.map(
-      (stop, i) =>
-        `${i + 1}. **${escape(worldById(stop.world).name)}** — ${stop.kind === 'jump' ? `${stop.jump} pc jump; ` : ''}${escape(stop.action)}; fuel ${stop.fuel}; credits ${credits(stop.cost)}`,
-    ),
+    `- Arrival fuel: ${voyage.remaining} t`,
+    `- Jump fuel: start ${state.initialFuelTons} t; consumed ${voyage.consumed} t; purchased ${voyage.purchased} t; scooped ${voyage.scooped} t; remaining ${voyage.remaining} t`,
+    '',
+    '## Voyage',
+    ...voyage.visits.flatMap((visit, i) => [
+      `${i + 1}. **${escape(worldById(visit.world).name)}** — arrival ${visit.arrival} t; departure ${visit.departure} t`,
+      ...visit.transactions.map(
+        (event) =>
+          `   - ${escape(transactionText(event))}; fuel ${event.fuelBeforeTons} → ${event.fuelAfterTons} t`,
+      ),
+      ...(voyage.legs[i]
+        ? [
+            `   - Jump ${escape(worldById(voyage.legs[i]!.fromId).name)} → ${escape(worldById(voyage.legs[i]!.toId).name)}: ${voyage.legs[i]!.distance} pc; consumed ${voyage.legs[i]!.fuelConsumedTons} t; remaining ${voyage.legs[i]!.fuelAfterTons} t`,
+          ]
+        : []),
+    ]),
   ].join('\n');
 }

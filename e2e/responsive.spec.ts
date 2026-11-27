@@ -16,7 +16,7 @@ for (const source of ['chart', 'manifest'] as const) {
     const trigger =
       source === 'chart'
         ? page.getByRole('button', { name: 'Inspect Serein, 0704' })
-        : page.getByRole('button', { name: 'Inspect event 13, Serein' });
+        : page.getByRole('button', { name: 'Inspect visit 7, Serein' });
     const heading = page.locator('#inspected-world');
     const close = page.getByRole('button', { name: 'Close world details' });
     await trigger.focus();
@@ -36,7 +36,7 @@ for (const source of ['chart', 'manifest'] as const) {
       if (width < 900) {
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
-        await expect(dialog).toContainText('Events 8, 9, 12, 13');
+        await expect(dialog).toContainText('Visits 5, 7');
         await page.keyboard.press('Shift+Tab');
         await expect(
           dialog.getByRole('button', { name: 'Add required waypoint' }),
@@ -65,9 +65,9 @@ for (const source of ['chart', 'manifest'] as const) {
 
     // Switch views, inspect a repeated event and close using the visible control.
     await page.getByRole('button', { name: /^Manifest/ }).click();
-    await expect(manifest.getByRole('listitem')).toHaveCount(14);
+    await expect(manifest.getByRole('listitem')).toHaveCount(8);
     const repeatedEvent = page.getByRole('button', {
-      name: 'Inspect event 9, Serein',
+      name: 'Inspect visit 5, Serein',
     });
     await repeatedEvent.focus();
     await page.keyboard.press('Space');

@@ -14,6 +14,8 @@ import {
   routeStops,
   presentWorlds,
   passageMarkdown,
+  presentVoyage,
+  transactionText,
 } from './presentation';
 import { PassageChart } from './PassageChart';
 import { WorldInspection, type Inspection } from './WorldInspection';
@@ -202,6 +204,7 @@ export function PassageThree({
     () => stops.filter((stop) => stop.kind !== 'refuel'),
     [stops],
   );
+  const voyage = passage ? presentVoyage(passage, state.initialFuelTons) : null;
   const cost = passage?.totalCostCredits ?? 0;
   const distance = passage?.totalDistance ?? 0;
   const unreachableReason = useMemo(() => {
@@ -358,9 +361,11 @@ export function PassageThree({
       compact={compact}
       origin={origin}
       destination={destination}
-      routeIndices={stops.flatMap((stop, index) =>
-        stop.world === inspection.id ? [index + 1] : [],
-      )}
+      routeIndices={
+        voyage?.visits.flatMap((visit, index) =>
+          visit.world === inspection.id ? [index + 1] : [],
+        ) ?? []
+      }
       hasPassage={Boolean(passage)}
       rules={rules}
       onClose={() => closeInspection()}
@@ -598,7 +603,10 @@ export function PassageThree({
                   {distance} pc
                 </strong>
                 <span className={styles.summaryCost}>
-                  {credits(cost)} <span>purchased fuel</span>
+                  {credits(cost)}{' '}
+                  <span>
+                    purchased fuel · arrival {passage.fuelRemainingTons} t
+                  </span>
                 </span>
                 <span className={styles.sr}>
                   {worldById(origin).name} to {worldById(destination).name}.{' '}
@@ -720,14 +728,13 @@ export function PassageThree({
                       preference,
                       ship,
                       state,
-                      stops,
                       worldById,
                     })}
                   />
                 )}
               </div>
               {!compact && inspectionPanel}
-              {passage ? (
+              {passage && voyage ? (
                 <motion.ol
                   key={`${origin}-${destination}`}
                   className={styles.stops}
@@ -735,67 +742,71 @@ export function PassageThree({
                   animate={{ opacity: 1 }}
                   transition={{ duration: reduced ? 0 : 0.18 }}
                 >
-                  {stops.map((stop, index) => (
-                    <li key={stop.id}>
-                      <button
-                        className={clsx(
-                          styles.stop,
-                          inspection?.id === stop.world && styles.activeStop,
-                          highlight === stop.world && styles.highlightStop,
-                        )}
-                        aria-label={`Inspect event ${index + 1}, ${worldById(stop.world).name}`}
-                        data-highlighted={highlight === stop.world}
-                        aria-describedby={`stop-leg-${stop.id} stop-detail-${stop.id} stop-cost-${stop.id}`}
-                        aria-pressed={inspection?.id === stop.world}
-                        onClick={(event) =>
-                          inspect(stop.world, event.currentTarget)
-                        }
-                        onMouseEnter={() => setHighlight(stop.world)}
-                        onMouseLeave={() => setHighlight(null)}
-                        onFocus={() => setHighlight(stop.world)}
-                        onBlur={() => setHighlight(null)}
-                      >
-                        <span className={styles.ordinal}>
-                          {String(index + 1).padStart(2, '0')}
-                        </span>
-                        <span className={styles.stopBody}>
-                          <span className={styles.stopTitle}>
-                            {worldById(stop.world).name}
-                            <small id={`stop-leg-${stop.id}`}>
-                              {stop.kind === 'departure'
-                                ? 'Departure'
-                                : stop.kind === 'refuel'
-                                  ? 'Refueling'
-                                  : `${stop.jump} pc · Jump`}
-                            </small>
-                          </span>
-                          <span
-                            className={styles.stopDetails}
-                            id={`stop-detail-${stop.id}`}
-                          >
-                            <span className={styles.stopAction}>
-                              {stop.action}
-                            </span>
-                            <span className={styles.stopFuel}>{stop.fuel}</span>
-                          </span>
-                        </span>
-                        <span
-                          className={styles.price}
-                          id={`stop-cost-${stop.id}`}
-                        >
-                          <span className={styles.sr}>Purchased fuel: </span>
-                          {stop.cost ? (
-                            credits(stop.cost)
-                          ) : (
-                            <>
-                              <span aria-hidden="true">—</span>
-                              <span className={styles.sr}>none</span>
-                            </>
+                  {voyage.visits.map((visit, index) => {
+                    const leg = voyage.legs[index];
+                    return (
+                      <li key={index}>
+                        <button
+                          className={clsx(
+                            styles.stop,
+                            inspection?.id === visit.world && styles.activeStop,
+                            highlight === visit.world && styles.highlightStop,
                           )}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
+                          aria-label={`Inspect visit ${index + 1}, ${worldById(visit.world).name}`}
+                          data-highlighted={highlight === visit.world}
+                          aria-pressed={inspection?.id === visit.world}
+                          onClick={(event) =>
+                            inspect(visit.world, event.currentTarget)
+                          }
+                          onMouseEnter={() => setHighlight(visit.world)}
+                          onMouseLeave={() => setHighlight(null)}
+                          onFocus={() => setHighlight(visit.world)}
+                          onBlur={() => setHighlight(null)}
+                        >
+                          <span className={styles.ordinal}>
+                            {String(index + 1).padStart(2, '0')}
+                          </span>
+                          <span className={styles.stopBody}>
+                            <span className={styles.stopTitle}>
+                              {worldById(visit.world).name}
+                              <small>System visit</small>
+                            </span>
+                            <span className={styles.stopDetails}>
+                              Arrival: {visit.arrival} t · Departure:{' '}
+                              {visit.departure} t
+                            </span>
+                            {visit.transactions.map((event, n) => (
+                              <span
+                                className={clsx(
+                                  styles.stopDetails,
+                                  event.source === 'gas-giant'
+                                    ? styles.scoopedFuel
+                                    : styles.purchasedFuel,
+                                )}
+                                key={n}
+                              >
+                                {transactionText(event)} ·{' '}
+                                {event.fuelBeforeTons} → {event.fuelAfterTons} t
+                              </span>
+                            ))}
+                            {passage.jumpCount === 0 && (
+                              <span>
+                                Already at your destination. No travel needed.
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                        {leg && (
+                          <p className={styles.manifestNote}>
+                            Jump {worldById(leg.fromId).name} →{' '}
+                            {worldById(leg.toId).name} · {leg.distance} pc ·
+                            consumed {leg.fuelConsumedTons} t · remaining{' '}
+                            {leg.fuelAfterTons} t
+                          </p>
+                        )}
+                      </li>
+                    );
+                  })}
                 </motion.ol>
               ) : (
                 <div className={styles.empty}>
@@ -825,11 +836,12 @@ export function PassageThree({
                   )}
                 </div>
               )}
-              {passage && (
+              {voyage && (
                 <p className={styles.manifestNote}>
-                  Jump fuel before → after each event. Arrival:{' '}
-                  {passage.fuelRemainingTons} t. Initial {state.initialFuelTons}{' '}
-                  t is a sunk cost.
+                  Jump fuel: start {state.initialFuelTons} t · consumed{' '}
+                  {voyage.consumed} t · purchased {voyage.purchased} t · scooped{' '}
+                  {voyage.scooped} t · remaining {voyage.remaining} t. Initial
+                  fuel is a sunk cost.
                 </p>
               )}
             </section>

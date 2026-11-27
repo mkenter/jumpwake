@@ -77,7 +77,7 @@ for (const width of [1440, 1280, 1024, 390]) {
     if (width < 900)
       await page.getByRole('button', { name: 'Manifest', exact: true }).click();
     const manifest = page.getByRole('region', { name: 'Passage manifest' });
-    await expect(manifest).toContainText('13 t aboard');
+    await expect(manifest).toContainText('Arrival: 13 t');
     await expect(manifest).toContainText('Buy 27 t unrefined fuel');
     await page.getByRole('link', { name: 'Passage', exact: true }).click();
     await expect(origin).toBeFocused();
