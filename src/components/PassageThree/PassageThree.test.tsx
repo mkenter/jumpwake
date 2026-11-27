@@ -607,6 +607,9 @@ describe('world profiles', () => {
     });
     expect(within(inspector).getByText('Chart profile')).toBeVisible();
     expect(inspector).toHaveTextContent('Tech levelC · 12');
+    expect(inspector).toHaveTextContent(
+      'Population multiplier5 · 5 × population base',
+    );
     expect(inspector).toHaveTextContent('Gas giants3 · 3');
     expect(inspector).toHaveTextContent('Fuel for current vessel');
     await user.click(within(inspector).getByText('Raw chart metadata'));

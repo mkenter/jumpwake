@@ -268,6 +268,9 @@ for (const width of [1200, 390]) {
         ? page.getByRole('dialog')
         : page.getByRole('complementary', { name: 'World inspection' });
     await expect(inspector).toContainText('Tech levelC · 12');
+    await expect(inspector).toContainText(
+      'Population multiplier5 · 5 × population base',
+    );
     await expect(inspector).toContainText('Gas giants3 · 3');
     await inspector.getByText('Raw chart metadata').click();
     await expect(inspector.getByText('Synthetic')).toBeVisible();

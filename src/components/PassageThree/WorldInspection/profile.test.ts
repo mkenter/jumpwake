@@ -15,6 +15,11 @@ describe('source profile presentation', () => {
       description: '10^10',
     });
     expect(fields).toContainEqual({
+      label: 'Population multiplier',
+      code: '5',
+      description: '5 × population base',
+    });
+    expect(fields).toContainEqual({
       label: 'Tech level',
       code: 'C',
       description: '12',
@@ -27,6 +32,16 @@ describe('source profile presentation', () => {
   });
   it('keeps unknowns, zero, and unsupported hydrographics distinct', () => {
     const fields = decodeProfile('?0?Z0??-?', '?0?');
+    expect(fields).toContainEqual({
+      label: 'Population multiplier',
+      code: '?',
+      description: 'Unknown',
+    });
+    expect(decodeProfile('A000000-0', '000')).toContainEqual({
+      label: 'Population multiplier',
+      code: '0',
+      description: '0 × population base',
+    });
     expect(fields).toContainEqual({
       label: 'Size',
       code: '0',

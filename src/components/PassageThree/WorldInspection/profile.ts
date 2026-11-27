@@ -52,7 +52,15 @@ export function decodeProfile(
     field('Tech level', uwp[8]!),
   ];
   if (pbg && /^[0-9?][0-9A-HJ-NP-Z?]{2}$/.test(pbg)) {
-    fields.push(field('Belts', pbg[1]!), field('Gas giants', pbg[2]!));
+    fields.push(
+      field(
+        'Population multiplier',
+        pbg[0]!,
+        pbg[0] === '?' ? 'Unknown' : `${pbg[0]} × population base`,
+      ),
+      field('Belts', pbg[1]!),
+      field('Gas giants', pbg[2]!),
+    );
   }
   return fields;
 }
