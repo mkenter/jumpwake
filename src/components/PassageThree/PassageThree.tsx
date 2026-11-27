@@ -432,7 +432,22 @@ export function PassageThree({
                 ))}
               </select>
             </label>
-            <span aria-hidden="true">⟶</span>
+            <button
+              type="button"
+              className={styles.swapEndpoints}
+              aria-label="Swap endpoints"
+              title="Swap endpoints"
+              disabled={!origin || !destination || origin === destination}
+              onClick={() => {
+                setOrigin(destination);
+                setDestination(origin);
+                setStopsRequired((stops) => [...stops].reverse());
+                setInspection(null);
+                setHighlight(null);
+              }}
+            >
+              <span aria-hidden="true">⇄</span>
+            </button>
             <label>
               To
               <select
