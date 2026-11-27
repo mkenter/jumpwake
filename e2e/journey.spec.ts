@@ -575,3 +575,18 @@ for (const width of [1024, 1440]) {
     await expect(world).toBeFocused();
   });
 }
+
+test('swaps endpoints using the keyboard', async ({ page }) => {
+  await page.goto('/');
+  const origin = page.getByRole('combobox', { name: 'Origin' });
+  const destination = page.getByRole('combobox', { name: 'Destination' });
+  const swap = page.getByRole('button', { name: 'Swap endpoints' });
+  await expect(swap).toBeDisabled();
+  await origin.selectOption('aster');
+  await destination.selectOption('cinder');
+  await swap.focus();
+  await page.keyboard.press('Enter');
+  await expect(origin).toHaveValue('cinder');
+  await expect(destination).toHaveValue('aster');
+  await expect(page.getByRole('status')).not.toContainText('Choose');
+});
