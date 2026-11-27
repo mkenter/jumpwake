@@ -504,6 +504,49 @@ test('desktop inspection remains visible and manifest selections restore focus',
   await expect(page.getByRole('combobox', { name: 'Origin' })).toBeFocused();
 });
 
+test('switching desktop worlds resets inspector scroll without moving the page', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 400 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await page.getByText('Chart bureau ·').click();
+  const remark = 'Long observation '.repeat(40);
+  await page.getByLabel('Load navigation chart').setInputFiles({
+    name: 'long.tab',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(
+      `Hex\tName\tUWP\tPBG\tRemarks\n0101\tFirst\tA000000-0\t001\t${remark}\n0102\tSecond\tA000000-0\t001\t${remark}\n`,
+    ),
+  });
+  const first = page.locator('[data-world="hex-0101"]');
+  const second = page.locator('[data-world="hex-0102"]');
+  await first.scrollIntoViewIfNeeded();
+  await first.click();
+  const inspector = page.getByRole('complementary', {
+    name: 'World inspection',
+  });
+  const scrolled = await inspector.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+    return element.scrollTop;
+  });
+  expect(scrolled).toBeGreaterThan(0);
+  await second.scrollIntoViewIfNeeded();
+  const pageY = await page.evaluate<number>('window.scrollY');
+  await second.click();
+  const heading = inspector.getByRole('heading');
+  await expect(heading).toContainText('Second');
+  await expect(heading).toBeFocused();
+  expect(await inspector.evaluate((element) => element.scrollTop)).toBe(0);
+  expect(await page.evaluate<number>('window.scrollY')).toBe(pageY);
+  const bounds = (await heading.boundingBox())!;
+  const inspectorBounds = (await inspector.boundingBox())!;
+  expect(bounds.y).toBeGreaterThanOrEqual(inspectorBounds.y);
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(
+    inspectorBounds.y + inspectorBounds.height,
+  );
+});
+
 for (const width of [1024, 1440]) {
   test(`desktop inspector remains clickable beneath condensed navigation at ${width}`, async ({
     page,

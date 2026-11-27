@@ -40,6 +40,7 @@ export function WorldInspection({
   mode,
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const inspectorRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const reduced = useReducedMotion();
   const world = worlds.find((w) => w.id === inspection.id)!;
@@ -47,6 +48,7 @@ export function WorldInspection({
   useEffect(() => {
     const dialog = dialogRef.current;
     if (compact) dialog?.showModal();
+    else if (inspectorRef.current) inspectorRef.current.scrollTop = 0;
     headingRef.current?.focus({ preventScroll: true });
     return () => {
       dialog?.close();
@@ -198,6 +200,7 @@ export function WorldInspection({
     </dialog>
   ) : (
     <aside
+      ref={inspectorRef}
       className={styles.inspector}
       aria-label="World inspection"
       onKeyDown={(event) => {
