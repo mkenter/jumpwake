@@ -8,6 +8,7 @@ import {
 } from '../../../rules/classicTraveller1981';
 import { address, describeFuel, type PresentedWorld } from '../presentation';
 import styles from './WorldInspection.module.css';
+import { decodeProfile } from './profile';
 
 export type Inspection = { id: string; trigger: HTMLElement | SVGElement };
 type Props = {
@@ -54,6 +55,8 @@ export function WorldInspection({
       dialog?.close();
     };
   }, [inspection, compact]);
+
+  const profile = decodeProfile(world.metadata?.UWP, world.metadata?.PBG);
 
   const content = (
     <motion.div
@@ -121,20 +124,39 @@ export function WorldInspection({
           )}
         </div>
       )}
-      {world.metadata && (
-        <dl>
-          {Object.entries(world.metadata)
-            .filter(([, value]) => value)
-            .map(([key, value]) => (
-              <div key={key}>
-                <dt>{key}</dt>
-                <dd>{value}</dd>
+      {profile && (
+        <section className={styles.profile} aria-labelledby="world-profile">
+          <h3 id="world-profile">Chart profile</h3>
+          <p>Imported UWP and PBG codes</p>
+          <dl>
+            {profile.map(({ label, code, description }) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>
+                  <strong>{code}</strong> · {description}
+                </dd>
               </div>
             ))}
-        </dl>
+          </dl>
+        </section>
+      )}
+      {world.metadata && (
+        <details className={styles.metadata}>
+          <summary>Raw chart metadata</summary>
+          <dl>
+            {Object.entries(world.metadata)
+              .filter(([, value]) => value)
+              .map(([key, value]) => (
+                <div key={key}>
+                  <dt>{key}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+          </dl>
+        </details>
       )}
       <p className={styles.fuel}>
-        <span>Local fuel</span>
+        <span>Fuel for current vessel</span>
         {rules.fuelSources(world).length === 0 &&
         (world.starport === '?' || world.gasGiant === null)
           ? 'No confirmed local fuel'

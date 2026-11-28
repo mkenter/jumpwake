@@ -488,7 +488,7 @@ test('desktop inspection remains visible and manifest selections restore focus',
   const inspector = page.getByRole('complementary', {
     name: 'World inspection',
   });
-  const heading = inspector.getByRole('heading');
+  const heading = inspector.getByRole('heading', { level: 2 });
   await expect(heading).toBeFocused();
   const bounds = await heading.evaluate((element) =>
     element.getBoundingClientRect().toJSON(),
@@ -534,7 +534,7 @@ test('switching desktop worlds resets inspector scroll without moving the page',
   await second.scrollIntoViewIfNeeded();
   const pageY = await page.evaluate<number>('window.scrollY');
   await second.click();
-  const heading = inspector.getByRole('heading');
+  const heading = inspector.getByRole('heading', { level: 2 });
   await expect(heading).toContainText('Second');
   await expect(heading).toBeFocused();
   expect(await inspector.evaluate((element) => element.scrollTop)).toBe(0);

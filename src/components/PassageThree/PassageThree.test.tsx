@@ -570,6 +570,53 @@ describe('chart-first itinerary', () => {
   });
 });
 
+describe('world profiles', () => {
+  it('keeps demo worlds inspectable without a source profile', async () => {
+    const user = userEvent.setup();
+    render(<PassageThree />);
+    await user.click(
+      screen.getByRole('button', { name: /Inspect Aster Quay/ }),
+    );
+    const inspector = screen.getByRole('complementary', {
+      name: 'World inspection',
+    });
+    expect(
+      within(inspector).queryByText('Chart profile'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(inspector).getByRole('button', { name: /Set destination/ }),
+    ).toBeEnabled();
+  });
+
+  it('shows imported codes, raw metadata, and vessel fuel separately', async () => {
+    const parsed = parseSubsectors(
+      'Hex\tName\tUWP\tPBG\tRemarks\n0101\tAlpha\tA867A99-C\t503\tSynthetic',
+    );
+    if (!parsed.ok) throw new Error(parsed.errors.join());
+    vi.spyOn(chartStorage, 'restoreChart').mockReturnValue({
+      text: '',
+      source: 'test',
+      selected: 'A',
+      charts: parsed.charts,
+    });
+    const user = userEvent.setup();
+    render(<PassageThree />);
+    await user.click(screen.getByRole('button', { name: /Inspect Alpha/ }));
+    const inspector = screen.getByRole('complementary', {
+      name: 'World inspection',
+    });
+    expect(within(inspector).getByText('Chart profile')).toBeVisible();
+    expect(inspector).toHaveTextContent('Tech levelC · 12');
+    expect(inspector).toHaveTextContent(
+      'Population multiplier5 · 5 × population base',
+    );
+    expect(inspector).toHaveTextContent('Gas giants3 · 3');
+    expect(inspector).toHaveTextContent('Fuel for current vessel');
+    await user.click(within(inspector).getByText('Raw chart metadata'));
+    expect(within(inspector).getByText('Synthetic')).toBeVisible();
+  });
+});
+
 describe('return passage', () => {
   it('enables swapping only for distinct selected endpoints and recalculates unreachable routes', async () => {
     const { user } = await passage();
