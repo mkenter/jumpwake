@@ -2,8 +2,8 @@ import type { FuelSource, RouteSystem, TravelRules } from '../rules/types';
 import { hexDistance } from './hexDistance';
 import { toAxial } from './subsector';
 
-// Resource limits for the generic whole-ton contract (CT configurations use ≤31 levels).
-const MAX_FUEL_LEVELS = 64;
+// Bound the exact fuel-state search, including fractional units.
+const MAX_FUEL_LEVELS = 256;
 const MAX_STOPS = 30;
 const MAX_FUEL_TONS = 1_000_000;
 function wholeNumber(value: number, min: number, max: number, name: string) {
@@ -49,6 +49,7 @@ export interface Jump {
   readonly toId: string;
   readonly distance: number;
   readonly fuelConsumedTons: number;
+  readonly operatingFuelConsumedTons?: number;
   readonly fuelBeforeTons: number;
   readonly fuelAfterTons: number;
 }
@@ -158,18 +159,34 @@ export function createRouter<S extends RouteSystem>(
 ) {
   const {
     maxJumpDistance,
-    jumpFuelCapacityTons: capacity,
-    initialFuelTons: initial,
+    jumpFuelCapacityTons: capacityTons,
+    initialFuelTons: initialTons,
   } = rules;
+  const scale = rules.fuelUnitsPerTon ?? 1;
+  wholeNumber(scale, 1, 1000, 'Fuel units per ton');
+  const capacity = capacityTons * scale;
+  const initial = initialTons * scale;
+  const operating = (rules.operatingFuelTonsPerJump ?? 0) * scale;
+  wholeNumber(operating, 0, MAX_FUEL_TONS, 'Operating consumption');
   wholeNumber(maxJumpDistance, 1, 16, 'Maximum jump distance');
   wholeNumber(capacity, 1, MAX_FUEL_TONS, 'Jump-fuel capacity');
   wholeNumber(initial, 0, capacity, 'Initial jump fuel');
   const consumption = Array.from({ length: maxJumpDistance }, (_, i) => {
-    const tons = rules.jumpFuelTons(i + 1);
+    const tons = rules.jumpFuelTons(i + 1) * scale;
     wholeNumber(tons, 1, MAX_FUEL_TONS, 'Jump consumption');
-    return tons;
+    return tons + operating;
   });
-  const levels = fuelLevels(capacity, initial, consumption.reduce(gcd));
+  const feasibleConsumption = consumption.filter(
+    (value) =>
+      value <= capacity &&
+      (rules.jumpFuelLimitTons === undefined ||
+        value - operating <= rules.jumpFuelLimitTons * scale),
+  );
+  const levels = fuelLevels(
+    capacity,
+    initial,
+    feasibleConsumption.length ? feasibleConsumption.reduce(gcd) : capacity,
+  );
   const width = levels.length;
   const levelIndices = new Map(levels.map((fuel, i) => [fuel, i]));
   const systems = input
@@ -197,7 +214,9 @@ export function createRouter<S extends RouteSystem>(
         visitable[j] &&
         distance <= maxJumpDistance &&
         tons !== undefined &&
-        tons <= capacity
+        tons <= capacity &&
+        (rules.jumpFuelLimitTons === undefined ||
+          tons - operating <= rules.jumpFuelLimitTons * scale)
         ? [{ target: j, distance, tons }]
         : [];
     }),
@@ -295,7 +314,7 @@ export function createRouter<S extends RouteSystem>(
             totalCostCredits: label.cost,
             jumpCount: label.jumps,
             totalDistance: label.distance,
-            fuelRemainingTons: fuel,
+            fuelRemainingTons: fuel / scale,
           };
         }
         settled.add(state);
@@ -314,7 +333,7 @@ export function createRouter<S extends RouteSystem>(
             const next = nextStage * stateWidth + target * width + arrivalIndex;
             if (settled.has(next)) continue;
             const tons = departure - fuel;
-            const cost = tons * (source?.creditsPerTon ?? 0);
+            const cost = (tons / scale) * (source?.creditsPerTon ?? 0);
             const candidate: Label = {
               cost: label.cost + cost,
               jumps: label.jumps + 1,
@@ -333,19 +352,22 @@ export function createRouter<S extends RouteSystem>(
                 ...source,
                 kind: 'refuel',
                 systemId: systems[current]!.id,
-                tons,
+                tons: tons / scale,
                 costCredits: cost,
-                fuelBeforeTons: fuel,
-                fuelAfterTons: departure,
+                fuelBeforeTons: fuel / scale,
+                fuelAfterTons: departure / scale,
               });
             candidate.events.push({
               kind: 'jump',
               fromId: systems[current]!.id,
               toId: systems[target]!.id,
               distance,
-              fuelConsumedTons: consumed,
-              fuelBeforeTons: departure,
-              fuelAfterTons: departure - consumed,
+              fuelConsumedTons: (consumed - operating) / scale,
+              ...(operating
+                ? { operatingFuelConsumedTons: operating / scale }
+                : {}),
+              fuelBeforeTons: departure / scale,
+              fuelAfterTons: (departure - consumed) / scale,
             });
             labels[next] = candidate;
             frontier.update(next);

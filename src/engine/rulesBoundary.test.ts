@@ -60,10 +60,10 @@ it('rejects unsupported fuel quantities and excessive state spaces', () => {
   expect(() =>
     createRouter(systems, {
       ...rules,
-      jumpFuelCapacityTons: 1000,
+      jumpFuelCapacityTons: 3000,
       jumpFuelTons: () => 1,
     }),
-  ).toThrow('64 critical levels');
+  ).toThrow('256 critical levels');
   for (const [key, values] of [
     ['maxJumpDistance', [0, 17, 1.5, NaN, Infinity]],
     ['jumpFuelCapacityTons', [0, 1.5, NaN, Infinity, 1_000_001]],

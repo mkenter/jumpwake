@@ -1208,3 +1208,72 @@ it('uses the port override to price fuel and preserves the jump ledger', () => {
     ).status,
   ).toBe('unreachable');
 });
+
+describe('power-plant fuel planning', () => {
+  const vessel: ShipSpecifications = {
+    displacementTons: 200,
+    jumpRating: 1,
+    jumpFuelCapacityTons: 20,
+    hasFuelScoops: false,
+    streamlined: false,
+    powerPlan: { plantRating: 1, tankageTons: 30, weeksPerJump: 1 },
+  };
+  const route = (
+    ship: ShipSpecifications,
+    initialFuelTons: number,
+    systems: StarSystem[],
+    stops: string[] = [],
+  ) =>
+    createEngineRouter(
+      systems,
+      createClassicTraveller1981Rules(ship, { initialFuelTons }),
+    ).findRoute('a', 'c', 'fewest-jumps', stops, 'direct');
+
+  it('conserves fractional plant fuel over multiple jumps and refueling', () => {
+    const result = reached(
+      route(
+        vessel,
+        30,
+        [system('a', 1), system('b', 2, 'D'), system('c', 3)],
+        ['b'],
+      ),
+    );
+    const jumps = result.events.filter((event) => event.kind === 'jump');
+    expect(jumps).toHaveLength(2);
+    expect(jumps.map((jump) => jump.operatingFuelConsumedTons)).toEqual([
+      2.5, 2.5,
+    ]);
+    const refuel = result.events.find((event) => event.kind === 'refuel');
+    expect(refuel).toMatchObject({
+      tons: 15,
+      fuelBeforeTons: 7.5,
+      fuelAfterTons: 22.5,
+      costCredits: 1500,
+    });
+    expect(result.fuelRemainingTons).toBe(0);
+  });
+
+  it('requires power fuel even when jump fuel is sufficient and accepts the exact four-week boundary', () => {
+    const systems = [system('a', 1), system('c', 2)];
+    const fourWeeks = {
+      ...vessel,
+      powerPlan: { ...vessel.powerPlan!, weeksPerJump: 4 },
+    };
+    expect(route(fourWeeks, 29, systems).status).toBe('unreachable');
+    const result = reached(route(fourWeeks, 30, systems));
+    expect(result.events[0]).toMatchObject({
+      fuelConsumedTons: 20,
+      operatingFuelConsumedTons: 10,
+      fuelAfterTons: 0,
+    });
+    const plantTwo = {
+      ...vessel,
+      powerPlan: { plantRating: 2, tankageTons: 40, weeksPerJump: 4 },
+    };
+    expect(reached(route(plantTwo, 40, systems)).events[0]).toMatchObject({
+      fuelConsumedTons: 20,
+      operatingFuelConsumedTons: 20,
+      fuelAfterTons: 0,
+    });
+  });
+});

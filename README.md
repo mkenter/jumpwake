@@ -41,7 +41,9 @@ The vessel editor can assess operational particulars against the bundled example
 
 Imported UWP and PBG profiles retain unknown values separately from zero. Inspection shows main-world size, hydrographics, facilities and travel-zone advisories; zones do not by themselves prohibit travel. Referee-supplied missing observations and explicit prohibitions can be provided through the world-facts interfaces. Unknown fuel sources are not assumed available by the planner. UWP does not describe complete system geometry or prove that surface liquid is water. Reference-data and interpretation gaps are tracked in DEV-79.
 
-**Current boundaries:** planning is limited to one active subsector. Fuel risk, power-plant fuel, travel time, full ship construction, and some wilderness refueling options are not modeled.
+Operational vessels account for plant and jump consumption from one shared tank. Book 2 pp. 14–15 and 23 specify a plant allowance of 10 tons per plant rating for four weeks; the planner interpolates this as 2.5 tons per rating per week. It provisionally assumes one ordinary operating week per jump, adjustable by the referee from zero to four; this is not a detailed travel-time model, and idle or abnormal operation is not predicted. The exact search is limited to 256 critical fuel levels; the editor rejects combinations exceeding that bound. The displayed maximum endurance assumes all remaining fuel is available to the plant, without reserving jump fuel. Existing route-only vessels continue to model jump fuel alone until operational particulars are applied. The supported bundled catalog remains incomplete; see DEV-79 for reference-data dependencies.
+
+**Current boundaries:** planning is limited to one active subsector. Fuel risk, detailed travel time, full ship construction, and some wilderness refueling options are not modeled.
 
 ## Run locally
 

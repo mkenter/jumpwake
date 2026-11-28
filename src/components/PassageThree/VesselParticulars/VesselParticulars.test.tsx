@@ -187,10 +187,20 @@ describe('VesselParticulars', () => {
       screen.getByRole('combobox', { name: 'Jump rating' }),
     ).toHaveDisplayValue('Unknown');
     await user.type(screen.getByLabelText('Computer model'), '1');
+    await user.clear(screen.getByLabelText('Total fuel aboard'));
+    await user.type(screen.getByLabelText('Total fuel aboard'), '75');
+    await user.selectOptions(
+      screen.getByLabelText('Ordinary operating weeks per jump'),
+      '2',
+    );
     await user.click(screen.getByRole('button', { name: 'Apply particulars' }));
     expect(onApply).toHaveBeenCalledWith(
       expect.objectContaining({
-        ship: expect.objectContaining({ jumpRating: 1 }),
+        state: { initialFuelTons: 75 },
+        ship: expect.objectContaining({
+          jumpRating: 1,
+          powerPlan: { plantRating: 1, tankageTons: 80, weeksPerJump: 2 },
+        }),
         design: expect.objectContaining({ jumpDrive: 'A', tankageTons: 80 }),
       }),
     );

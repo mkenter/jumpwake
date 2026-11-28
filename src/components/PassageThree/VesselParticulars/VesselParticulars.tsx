@@ -7,7 +7,11 @@ import {
   type DriveKind,
   type VesselDesign,
 } from '../../../rules/classicTraveller1981/vesselDesign';
-import { validateShip } from '../../../rules/classicTraveller1981';
+import {
+  createClassicTraveller1981Rules,
+  validateShip,
+} from '../../../rules/classicTraveller1981';
+import { createRouter } from '../../../engine';
 import { DEFAULT_VESSEL, type Vessel } from '../vessel';
 import styles from './VesselParticulars.module.css';
 
@@ -33,7 +37,10 @@ function draftFrom({ ship, state }: Vessel): Draft {
   };
 }
 
-function validateDraft(draft: Draft): { vessel: Vessel; errors: Errors } {
+function validateDraft(
+  draft: Draft,
+  totalCapacity?: number,
+): { vessel: Vessel; errors: Errors } {
   const number = (field: NumericField) =>
     draft[field].trim() === '' ? NaN : Number(draft[field]);
   const vessel: Vessel = {
@@ -93,13 +100,15 @@ function validateDraft(draft: Draft): { vessel: Vessel; errors: Errors } {
       ship: {
         ...base.ship,
         displacementTons: 5000,
-        jumpFuelCapacityTons: errors.jumpFuelCapacityTons
-          ? 5000
-          : vessel.ship.jumpFuelCapacityTons,
+        jumpFuelCapacityTons:
+          totalCapacity ??
+          (errors.jumpFuelCapacityTons
+            ? 5000
+            : vessel.ship.jumpFuelCapacityTons),
       },
       state: vessel.state,
     },
-    'Enter whole tons from 0 up to the jump-fuel capacity. Fuel aboard cannot exceed capacity.',
+    'Enter whole tons from 0 up to the available tank capacity. Fuel aboard cannot exceed capacity.',
   );
   return { vessel, errors };
 }
@@ -122,6 +131,9 @@ export function VesselParticulars({
   const [manual, setManual] = useState<
     Partial<Record<DriveKind, { rating: string; provenance: string }>>
   >({});
+  const [weeksPerJump, setWeeksPerJump] = useState(
+    vessel.ship.powerPlan?.weeksPerJump ?? 1,
+  );
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => draftFrom(vessel));
   const [submitted, setSubmitted] = useState(false);
@@ -130,7 +142,12 @@ export function VesselParticulars({
   const formRef = useRef<HTMLFormElement>(null);
   const firstRef = useRef<HTMLInputElement>(null);
   const reduced = useReducedMotion();
-  const { errors } = validateDraft(draft);
+  const { errors } = validateDraft(
+    draft,
+    operational && Number.isInteger(design.tankageTons)
+      ? design.tankageTons
+      : undefined,
+  );
   const { ship, state } = vessel;
   const designWithoutManual = { ...design };
   delete designWithoutManual.manualPerformance;
@@ -160,8 +177,39 @@ export function VesselParticulars({
       !value.provenance.trim()
     );
   });
+  let stateSpaceError = false;
+  if (
+    operational &&
+    assessment.plantRating !== undefined &&
+    assessment.effectiveJump !== undefined &&
+    Number.isInteger(assessedDesign.tankageTons) &&
+    !Object.keys(errors).length
+  ) {
+    try {
+      const candidate = validateDraft(draft, assessedDesign.tankageTons).vessel;
+      candidate.ship = {
+        ...candidate.ship,
+        jumpRating: assessment.effectiveJump,
+        powerPlan: {
+          plantRating: assessment.plantRating,
+          tankageTons: assessedDesign.tankageTons!,
+          weeksPerJump,
+        },
+      };
+      createRouter(
+        [],
+        createClassicTraveller1981Rules(candidate.ship, candidate.state),
+      );
+    } catch (error) {
+      stateSpaceError =
+        error instanceof RangeError &&
+        error.message.includes('critical levels');
+    }
+  }
   const operationalError =
+    stateSpaceError ||
     invalidManual ||
+    !Number.isInteger(assessedDesign.tankageTons) ||
     assessment.status === 'invalid' ||
     assessment.status === 'incomplete' ||
     assessment.effectiveJump === undefined ||
@@ -188,7 +236,10 @@ export function VesselParticulars({
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    const result = validateDraft(draft);
+    const result = validateDraft(
+      draft,
+      operational ? assessedDesign.tankageTons : undefined,
+    );
     setSubmitted(true);
     if (
       Object.keys(result.errors).length ||
@@ -206,6 +257,11 @@ export function VesselParticulars({
         ...result.vessel.ship,
         jumpRating: assessment.effectiveJump!,
         hasFuelScoops: draft.streamlined,
+        powerPlan: {
+          plantRating: assessment.plantRating!,
+          tankageTons: assessedDesign.tankageTons!,
+          weeksPerJump,
+        },
       };
       result.vessel.design = assessedDesign;
     }
@@ -278,8 +334,23 @@ export function VesselParticulars({
             {ship.displacementTons} tons · Jump-{ship.jumpRating}
           </span>
           <span>
-            {state.initialFuelTons}/{ship.jumpFuelCapacityTons} tons jump fuel
+            {state.initialFuelTons}/
+            {ship.powerPlan?.tankageTons ?? ship.jumpFuelCapacityTons} tons{' '}
+            {ship.powerPlan ? 'total fuel' : 'jump fuel'}
           </span>
+          {ship.powerPlan && (
+            <span>
+              Plant-{ship.powerPlan.plantRating} ·{' '}
+              {Number(
+                (
+                  state.initialFuelTons /
+                  (2.5 * ship.powerPlan.plantRating)
+                ).toFixed(2),
+              )}{' '}
+              weeks maximum on current shared fuel before jumps ·{' '}
+              {ship.powerPlan.weeksPerJump} operating weeks per jump
+            </span>
+          )}
           <span>
             {ship.hasFuelScoops ? 'Scoops' : 'No scoops'} ·{' '}
             {ship.streamlined ? 'Streamlined' : 'Unstreamlined'}
@@ -295,6 +366,7 @@ export function VesselParticulars({
             else {
               setDraft(draftFrom(vessel));
               setOperational(Boolean(vessel.design));
+              setWeeksPerJump(vessel.ship.powerPlan?.weeksPerJump ?? 1);
               setDesign(vessel.design ?? {});
               setManual(
                 Object.fromEntries(
@@ -600,11 +672,45 @@ export function VesselParticulars({
                 <legend>Current operating state</legend>
                 {numeric(
                   'initialFuelTons',
-                  'Jump fuel aboard',
+                  operational ? 'Total fuel aboard' : 'Jump fuel aboard',
                   0,
-                  Number(draft.jumpFuelCapacityTons) || 5000,
+                  (operational
+                    ? design.tankageTons
+                    : Number(draft.jumpFuelCapacityTons)) || 5000,
                   1,
                   'Fuel available at departure. May be less than capacity.',
+                )}
+                {stateSpaceError && (
+                  <p className={styles.error}>
+                    This combination exceeds the planner’s fuel-state limit.
+                    Adjust tankage, fuel aboard, or operating weeks.
+                  </p>
+                )}
+                {operational && (
+                  <div className={styles.field}>
+                    <label htmlFor="weeks-per-jump">
+                      Ordinary operating weeks per jump
+                    </label>
+                    <select
+                      id="weeks-per-jump"
+                      value={weeksPerJump}
+                      onChange={(event) =>
+                        setWeeksPerJump(Number(event.target.value))
+                      }
+                    >
+                      {[0, 1, 2, 3, 4].map((weeks) => (
+                        <option key={weeks} value={weeks}>
+                          {weeks}
+                        </option>
+                      ))}
+                    </select>
+                    <p className={styles.hint}>
+                      Provisional timing: one week per jump by default. Adjust
+                      for referee assumptions; idle and abnormal operation are
+                      not modelled. Plant allowance lasts four weeks; weekly
+                      burn is a linear interpolation.
+                    </p>
+                  </div>
                 )}
               </fieldset>
             </div>
@@ -615,6 +721,7 @@ export function VesselParticulars({
                   onClick={() => {
                     setDraft(draftFrom(DEFAULT_VESSEL));
                     setOperational(false);
+                    setWeeksPerJump(1);
                     setDesign({});
                     setManual({});
                     setSubmitted(false);
