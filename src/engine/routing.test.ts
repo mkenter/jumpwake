@@ -206,7 +206,7 @@ describe('fuel-aware routes', () => {
   });
 });
 
-// Independent Bellman–Ford oracle on tiny display-grid networks. Uses 1-ton
+// Independent Bellman–Ford oracle on tiny display-grid networks. Uses discrete
 // refuel edges rather than the production combined refuel/jump transitions.
 interface ReferenceLabel {
   score: [number, number, number];
@@ -220,12 +220,20 @@ function referenceDetailed(
   state: ShipOperatingState = INITIAL_STATE,
   preference: RoutingPreference = 'lowest-fuel-cost',
 ) {
-  const capacity = ship.jumpFuelCapacityTons;
+  const scale = ship.powerPlan ? 2 : 1;
+  const capacity =
+    (ship.powerPlan?.tankageTons ?? ship.jumpFuelCapacityTons) * scale;
+  const plant = ship.powerPlan
+    ? 2.5 * ship.powerPlan.plantRating * ship.powerPlan.weeksPerJump * scale
+    : 0;
   const width = capacity + 1;
   const labels: (ReferenceLabel | undefined)[] = Array.from({
     length: systems.length * width,
   });
-  labels[start * width + state.initialFuelTons] = { score: [0, 0, 0], key: [] };
+  labels[start * width + state.initialFuelTons * scale] = {
+    score: [0, 0, 0],
+    key: [],
+  };
   // Keep cost/jumps/distance as factual totals; rank them independently.
   const order = preference === 'fewest-jumps' ? [1, 0, 2] : [0, 1, 2];
   const distances = systems.map((a) =>
@@ -243,7 +251,7 @@ function referenceDetailed(
     }
     return false;
   };
-  // Independent one-ton refueling edges, geometry, CT arithmetic, and string keys.
+  // Independent half-ton (or legacy one-ton) refueling edges, geometry, CT arithmetic, and string keys.
   // No production rules, critical levels, heap, or combined transitions are used.
   for (let pass = 0; pass < labels.length; pass++) {
     let changed = false;
@@ -262,7 +270,7 @@ function referenceDetailed(
         if (fuel < capacity && (free || 'ABCD'.includes(s.starport)))
           relax(i * width + fuel + 1, {
             score: [
-              label.score[0] + (free ? 0 : 100),
+              label.score[0] + (free ? 0 : 100 / scale),
               label.score[1],
               label.score[2],
             ],
@@ -270,7 +278,8 @@ function referenceDetailed(
           });
         for (let j = 0; j < systems.length; j++) {
           const distance = distances[i]![j]!;
-          const needed = (ship.displacementTons / 10) * distance;
+          const needed =
+            (ship.displacementTons / 10) * distance * scale + plant;
           if (distance >= 1 && distance <= ship.jumpRating && fuel >= needed)
             relax(j * width + fuel - needed, {
               score: [
@@ -278,7 +287,7 @@ function referenceDetailed(
                 label.score[1] + 1,
                 label.score[2] + distance,
               ],
-              key: [...label.key, [systems[j]!.id, fuel]],
+              key: [...label.key, [systems[j]!.id, fuel / scale]],
             });
         }
       }
@@ -1207,4 +1216,117 @@ it('uses the port override to price fuel and preserves the jump ledger', () => {
       'b',
     ).status,
   ).toBe('unreachable');
+});
+
+describe('power-plant fuel planning', () => {
+  const vessel: ShipSpecifications = {
+    displacementTons: 200,
+    jumpRating: 1,
+    jumpFuelCapacityTons: 20,
+    hasFuelScoops: false,
+    streamlined: false,
+    powerPlan: { plantRating: 1, tankageTons: 30, weeksPerJump: 1 },
+  };
+  const route = (
+    ship: ShipSpecifications,
+    initialFuelTons: number,
+    systems: StarSystem[],
+    stops: string[] = [],
+  ) =>
+    createEngineRouter(
+      systems,
+      createClassicTraveller1981Rules(ship, { initialFuelTons }),
+    ).findRoute('a', 'c', 'fewest-jumps', stops, 'direct');
+
+  it('conserves fractional plant fuel over multiple jumps and refueling', () => {
+    const result = reached(
+      route(
+        vessel,
+        30,
+        [system('a', 1), system('b', 2, 'D'), system('c', 3)],
+        ['b'],
+      ),
+    );
+    const jumps = result.events.filter((event) => event.kind === 'jump');
+    expect(jumps).toHaveLength(2);
+    expect(jumps.map((jump) => jump.operatingFuelConsumedTons)).toEqual([
+      2.5, 2.5,
+    ]);
+    const refuel = result.events.find((event) => event.kind === 'refuel');
+    expect(refuel).toMatchObject({
+      tons: 15,
+      fuelBeforeTons: 7.5,
+      fuelAfterTons: 22.5,
+      costCredits: 1500,
+    });
+    expect(result.fuelRemainingTons).toBe(0);
+  });
+
+  it('requires power fuel even when jump fuel is sufficient and accepts the exact four-week boundary', () => {
+    const systems = [system('a', 1), system('c', 2)];
+    const fourWeeks = {
+      ...vessel,
+      powerPlan: { ...vessel.powerPlan!, weeksPerJump: 4 },
+    };
+    expect(route(fourWeeks, 29, systems).status).toBe('unreachable');
+    const result = reached(route(fourWeeks, 30, systems));
+    expect(result.events[0]).toMatchObject({
+      fuelConsumedTons: 20,
+      operatingFuelConsumedTons: 10,
+      fuelAfterTons: 0,
+    });
+    const plantTwo = {
+      ...vessel,
+      powerPlan: { plantRating: 2, tankageTons: 40, weeksPerJump: 4 },
+    };
+    expect(reached(route(plantTwo, 40, systems)).events[0]).toMatchObject({
+      fuelConsumedTons: 20,
+      operatingFuelConsumedTons: 20,
+      fuelAfterTons: 0,
+    });
+  });
+});
+
+it('matches independent operational route choices for both preferences', () => {
+  const ship: ShipSpecifications = {
+    displacementTons: 200,
+    jumpRating: 2,
+    jumpFuelCapacityTons: 40,
+    hasFuelScoops: true,
+    streamlined: true,
+    powerPlan: { plantRating: 1, tankageTons: 50, weeksPerJump: 1 },
+  };
+  const state = { initialFuelTons: 45 };
+  const systems = [
+    system('a', 1),
+    system('b', 3, 'C'),
+    system('c', 5),
+    system('d', 2, 'X', true, 2),
+    system('e', 4, 'X', true, 2),
+  ];
+  const router = createEngineRouter(
+    systems,
+    createClassicTraveller1981Rules(ship, state),
+  );
+  for (const preference of preferences) {
+    const expected = referenceDetailed(systems, 0, 2, ship, state, preference);
+    const result = reached(router.findRoute('a', 'c', preference));
+    expect(expected).toBeDefined();
+    expect([
+      result.totalCostCredits,
+      result.jumpCount,
+      result.totalDistance,
+    ]).toEqual(expected!.score);
+    expect(
+      result.events
+        .filter((event) => event.kind === 'jump')
+        .map((event) => [event.toId, event.fuelBeforeTons]),
+    ).toEqual(expected!.key);
+  }
+  expect(stops(router.findRoute('a', 'c', 'lowest-fuel-cost'))).toEqual([
+    'd',
+    'e',
+    'c',
+  ]);
+  expect(stops(router.findRoute('a', 'c', 'fewest-jumps'))).toEqual(['b', 'c']);
 });

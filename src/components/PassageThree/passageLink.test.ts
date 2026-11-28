@@ -36,6 +36,10 @@ describe('passage links', () => {
       mode: 'waypoints',
       vessel: {
         ...link.vessel,
+        ship: {
+          ...link.vessel.ship,
+          powerPlan: { plantRating: 1, tankageTons: 80, weeksPerJump: 1 },
+        },
         design: {
           custom: true,
           jumpDrive: 'A',

@@ -225,3 +225,34 @@ test('operational particulars control routing and survive reload', async ({
     page.getByLabel('Jump drive letter', { exact: true }),
   ).toHaveValue('A');
 });
+
+test('operational vessel uses shared fuel for jump and plant and survives reload', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Edit particulars' }).click();
+  await page.getByLabel('Assess operational particulars').check();
+  await page.getByLabel('Jump drive letter').fill('A');
+  await page
+    .getByLabel('Maneuver drive letter (enter none if absent)')
+    .fill('A');
+  await page.getByLabel('Power plant letter').fill('A');
+  await page.getByLabel('Computer model').fill('1');
+  await page.getByLabel('Installed total tankage (tons)').fill('80');
+  await page.getByLabel('Total fuel aboard').fill('75');
+  await page.getByRole('button', { name: 'Apply particulars' }).click();
+  await page.getByRole('combobox', { name: 'Origin' }).selectOption('serein');
+  await page
+    .getByRole('combobox', { name: 'Destination' })
+    .selectOption('ilex');
+  const manifest = page.getByRole('region', { name: 'Passage manifest' });
+  await expect(manifest).toContainText('2.5 t plant fuel');
+  await expect(manifest).toContainText('remaining 52.5 t');
+  await page.reload();
+  await expect(
+    page.getByRole('group', { name: 'Active vessel' }),
+  ).toContainText('75/80 tons total fuel');
+  await expect(
+    page.getByRole('group', { name: 'Active vessel' }),
+  ).toContainText('Plant-1');
+});

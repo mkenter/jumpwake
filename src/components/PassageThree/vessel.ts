@@ -1,10 +1,13 @@
 import {
+  createClassicTraveller1981Rules,
   INITIAL_STATE,
   SHIP,
   validateShip,
   type ShipOperatingState,
   type ShipSpecifications,
 } from '../../rules/classicTraveller1981';
+
+import { createRouter } from '../../engine';
 
 import type { VesselDesign } from '../../rules/classicTraveller1981/vesselDesign';
 
@@ -37,6 +40,14 @@ export function parseVessel(
       typeof state.initialFuelTons !== 'number'
     )
       return null;
+    if (
+      ship.powerPlan !== undefined &&
+      (!isRecord(ship.powerPlan) ||
+        typeof ship.powerPlan.plantRating !== 'number' ||
+        typeof ship.powerPlan.tankageTons !== 'number' ||
+        typeof ship.powerPlan.weeksPerJump !== 'number')
+    )
+      return null;
     const vessel: Vessel = {
       ship: {
         displacementTons: ship.displacementTons,
@@ -44,10 +55,23 @@ export function parseVessel(
         jumpFuelCapacityTons: ship.jumpFuelCapacityTons,
         hasFuelScoops: ship.hasFuelScoops,
         streamlined: ship.streamlined,
+        ...(isRecord(ship.powerPlan)
+          ? {
+              powerPlan: {
+                plantRating: ship.powerPlan.plantRating as number,
+                tankageTons: ship.powerPlan.tankageTons as number,
+                weeksPerJump: ship.powerPlan.weeksPerJump as number,
+              },
+            }
+          : {}),
       },
       state: { initialFuelTons: state.initialFuelTons },
     };
     validateShip(vessel.ship, vessel.state);
+    createRouter(
+      [],
+      createClassicTraveller1981Rules(vessel.ship, vessel.state),
+    );
     if (includeDesign && design !== undefined) {
       if (!isRecord(design)) return null;
       const allowed = [

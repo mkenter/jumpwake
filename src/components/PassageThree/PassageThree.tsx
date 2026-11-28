@@ -245,7 +245,10 @@ export function PassageThree({
     )
       ? ' Referee travel prohibitions are enforced.'
       : '';
-    return reason ? reason + uncertainty + restriction : reason;
+    const power = ship.powerPlan
+      ? ' The shared fuel supply must cover both jump and power-plant consumption.'
+      : '';
+    return reason ? reason + uncertainty + restriction + power : reason;
   }, [
     result,
     stopsRequired,
@@ -817,8 +820,14 @@ export function PassageThree({
                           <p className={styles.manifestNote}>
                             Jump {worldById(leg.fromId).name} →{' '}
                             {worldById(leg.toId).name} · {leg.distance} pc ·
-                            consumed {leg.fuelConsumedTons} t · remaining{' '}
-                            {leg.fuelAfterTons} t
+                            consumed {leg.fuelConsumedTons} t jump fuel
+                            {leg.operatingFuelConsumedTons !== undefined && (
+                              <>
+                                {' '}
+                                · {leg.operatingFuelConsumedTons} t plant fuel
+                              </>
+                            )}{' '}
+                            · remaining {leg.fuelAfterTons} t
                           </p>
                         )}
                       </li>
@@ -855,10 +864,27 @@ export function PassageThree({
               )}
               {voyage && (
                 <p className={styles.manifestNote}>
-                  Jump fuel: start {state.initialFuelTons} t · consumed{' '}
-                  {voyage.consumed} t · purchased {voyage.purchased} t · scooped{' '}
-                  {voyage.scooped} t · remaining {voyage.remaining} t. Initial
-                  fuel is a sunk cost.
+                  {ship.powerPlan ? 'Total fuel' : 'Jump fuel'}: start{' '}
+                  {state.initialFuelTons} t · jump consumed {voyage.consumed} t
+                  {ship.powerPlan && (
+                    <> · plant consumed {voyage.operatingConsumed} t</>
+                  )}{' '}
+                  · purchased {voyage.purchased} t · scooped {voyage.scooped} t
+                  · remaining {voyage.remaining} t. Initial fuel is a sunk cost.
+                  {ship.powerPlan && (
+                    <>
+                      {' '}
+                      Remaining fuel could support up to{' '}
+                      {Number(
+                        (
+                          voyage.remaining /
+                          (2.5 * ship.powerPlan.plantRating)
+                        ).toFixed(2),
+                      )}{' '}
+                      weeks of ordinary plant operation if no further fuel is
+                      used for jumps.
+                    </>
+                  )}
                 </p>
               )}
             </section>
@@ -869,7 +895,8 @@ export function PassageThree({
       <footer className={styles.footer}>
         <span>
           JUMP–{ship.jumpRating} · {ship.displacementTons} T ·{' '}
-          {state.initialFuelTons} T INITIAL JUMP FUEL
+          {state.initialFuelTons} T INITIAL {ship.powerPlan ? 'TOTAL' : 'JUMP'}{' '}
+          FUEL
         </span>
         <span>Fuel grades simplified · no arrival reserve</span>
         <a href="/legal.html">Legal &amp; attribution</a>

@@ -9,6 +9,12 @@ export interface ShipSpecifications {
   readonly jumpFuelCapacityTons: number;
   readonly hasFuelScoops: boolean;
   readonly streamlined: boolean;
+  /** Optional operational planning; tankage is the shared physical capacity. */
+  readonly powerPlan?: {
+    readonly plantRating: number;
+    readonly tankageTons: number;
+    readonly weeksPerJump: number;
+  };
 }
 export interface ShipOperatingState {
   readonly initialFuelTons: number;
@@ -63,10 +69,24 @@ export function validateShip(
     throw new RangeError(
       'Jump-fuel capacity must be whole tons from 1 to displacement',
     );
+  const plan = ship.powerPlan;
+  if (
+    plan &&
+    (!Number.isInteger(plan.plantRating) ||
+      plan.plantRating < 1 ||
+      plan.plantRating > 6 ||
+      !Number.isInteger(plan.tankageTons) ||
+      plan.tankageTons < ship.jumpFuelCapacityTons + 10 * plan.plantRating ||
+      plan.tankageTons > ship.displacementTons ||
+      !Number.isInteger(plan.weeksPerJump) ||
+      plan.weeksPerJump < 0 ||
+      plan.weeksPerJump > 4)
+  )
+    throw new RangeError('Invalid power planning particulars');
   if (
     !Number.isInteger(state.initialFuelTons) ||
     state.initialFuelTons < 0 ||
-    state.initialFuelTons > ship.jumpFuelCapacityTons
+    state.initialFuelTons > (plan?.tankageTons ?? ship.jumpFuelCapacityTons)
   )
     throw new RangeError(
       'Initial jump fuel must be whole tons from 0 to capacity',
@@ -94,8 +114,16 @@ export function createClassicTraveller1981Rules(
   const { initialFuelTons } = state;
   return Object.freeze({
     maxJumpDistance: jumpRating,
-    jumpFuelCapacityTons,
+    jumpFuelCapacityTons: ship.powerPlan?.tankageTons ?? jumpFuelCapacityTons,
     initialFuelTons,
+    ...(ship.powerPlan
+      ? {
+          fuelUnitsPerTon: 2,
+          jumpFuelLimitTons: jumpFuelCapacityTons,
+          operatingFuelTonsPerJump:
+            2.5 * ship.powerPlan.plantRating * ship.powerPlan.weeksPerJump,
+        }
+      : {}),
     jumpFuelTons(distance: number): number {
       if (!Number.isInteger(distance) || distance < 1 || distance > jumpRating)
         throw new RangeError(`Jump distance must be 1–${jumpRating} parsecs`);

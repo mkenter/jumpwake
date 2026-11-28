@@ -8,8 +8,13 @@ export interface FuelSource {
   readonly grade: string;
   readonly creditsPerTon: number;
 }
-/** Exact whole-ton, unlimited linear-price fuel model. */
+/** Bounded, unlimited linear-price fuel model. */
 export interface TravelRules<S extends RouteSystem> {
+  /** Fuel accounting precision in units per ton (defaults to whole tons). */
+  readonly fuelUnitsPerTon?: number;
+  /** Additional fuel consumed per jump, independent of distance. */
+  readonly operatingFuelTonsPerJump?: number;
+  readonly jumpFuelLimitTons?: number;
   readonly maxJumpDistance: number;
   readonly jumpFuelCapacityTons: number;
   readonly initialFuelTons: number;

@@ -84,6 +84,21 @@ describe('vessel persistence', () => {
       ),
     ).toEqual(DEFAULT_VESSEL);
   });
+  it('preserves a shared tank and power planning while legacy vessels stay route-only', () => {
+    const planned = {
+      ...vessel,
+      ship: {
+        ...vessel.ship,
+        powerPlan: { plantRating: 1, tankageTons: 40, weeksPerJump: 1 },
+      },
+      state: { initialFuelTons: 35 },
+    };
+    expect(saveVessel(planned)).toBe(true);
+    expect(restoreVessel()).toEqual(planned);
+    expect(decodeVessel(JSON.stringify({ version: 2, ...vessel }))).toEqual(
+      vessel,
+    );
+  });
   it('works without browser storage access', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('blocked');

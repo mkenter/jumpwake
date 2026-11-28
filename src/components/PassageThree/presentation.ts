@@ -65,9 +65,11 @@ export function routeStops(
       kind: 'departure',
       jump: 0,
       action: result.jumpCount
-        ? state.initialFuelTons === ship.jumpFuelCapacityTons
-          ? 'Depart with full jump fuel'
-          : 'Depart with available jump fuel'
+        ? ship.powerPlan
+          ? 'Depart with shared fuel'
+          : state.initialFuelTons === ship.jumpFuelCapacityTons
+            ? 'Depart with full jump fuel'
+            : 'Depart with available jump fuel'
         : 'Already at your destination. No travel needed.',
       cost: 0,
       fuel: `${state.initialFuelTons} t aboard`,
@@ -107,6 +109,7 @@ export function presentVoyage(
   ];
   const legs: Jump[] = [];
   let consumed = 0,
+    operatingConsumed = 0,
     purchased = 0,
     scooped = 0;
   for (const event of passage.events) {
@@ -119,6 +122,7 @@ export function presentVoyage(
     } else {
       visit.departure = event.fuelBeforeTons;
       consumed += event.fuelConsumedTons;
+      operatingConsumed += event.operatingFuelConsumedTons ?? 0;
       legs.push(event);
       visits.push({
         world: event.toId,
@@ -132,6 +136,7 @@ export function presentVoyage(
     visits,
     legs,
     consumed,
+    operatingConsumed,
     purchased,
     scooped,
     remaining: passage.fuelRemainingTons,
@@ -194,13 +199,13 @@ export function passageMarkdown({
     `- Destination: ${escape(destination.name)} (${address(destination)})`,
     `- Routing: ${preferenceNames[preference]}`,
     `- Vessel: Jump–${ship.jumpRating}, ${ship.displacementTons} tons`,
-    `- Starting jump fuel: ${state.initialFuelTons} t`,
+    `- Starting ${ship.powerPlan ? 'total' : 'jump'} fuel: ${state.initialFuelTons} t`,
     `- Jumps: ${passage.jumpCount}`,
     `- Distance: ${passage.totalDistance} pc`,
     `- Purchased fuel: ${credits(passage.totalCostCredits)}`,
     '',
     `- Arrival fuel: ${voyage.remaining} t`,
-    `- Jump fuel: start ${state.initialFuelTons} t; consumed ${voyage.consumed} t; purchased ${voyage.purchased} t; scooped ${voyage.scooped} t; remaining ${voyage.remaining} t`,
+    `- Fuel: start ${state.initialFuelTons} t; jump consumed ${voyage.consumed} t; power plant consumed ${voyage.operatingConsumed} t; purchased ${voyage.purchased} t; scooped ${voyage.scooped} t; remaining ${voyage.remaining} t`,
     '',
     '## Voyage',
     ...voyage.visits.flatMap((visit, i) => [
@@ -211,7 +216,7 @@ export function passageMarkdown({
       ),
       ...(voyage.legs[i]
         ? [
-            `   - Jump ${escape(worldById(voyage.legs[i]!.fromId).name)} → ${escape(worldById(voyage.legs[i]!.toId).name)}: ${voyage.legs[i]!.distance} pc; consumed ${voyage.legs[i]!.fuelConsumedTons} t; remaining ${voyage.legs[i]!.fuelAfterTons} t`,
+            `   - Jump ${escape(worldById(voyage.legs[i]!.fromId).name)} → ${escape(worldById(voyage.legs[i]!.toId).name)}: ${voyage.legs[i]!.distance} pc; consumed ${voyage.legs[i]!.fuelConsumedTons} t jump fuel; ${voyage.legs[i]!.operatingFuelConsumedTons ?? 0} t plant fuel; remaining ${voyage.legs[i]!.fuelAfterTons} t`,
           ]
         : []),
     ]),
