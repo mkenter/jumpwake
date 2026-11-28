@@ -86,7 +86,7 @@ export function WorldInspection({
           : world.id === destination
             ? 'Your destination'
             : routeIndices.length > 0
-              ? `Events ${routeIndices.join(', ')} on your passage`
+              ? `Visits ${routeIndices.join(', ')} on your passage`
               : hasPassage
                 ? 'Outside your passage'
                 : 'World details'}{' '}

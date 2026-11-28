@@ -74,7 +74,7 @@ function assertRoutePreserved() {
     within(
       screen.getByRole('region', { name: 'Passage manifest' }),
     ).getAllByRole('listitem'),
-  ).toHaveLength(6);
+  ).toHaveLength(4);
 }
 
 describe('chart file interactions', () => {

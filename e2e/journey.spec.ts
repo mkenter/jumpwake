@@ -159,7 +159,7 @@ for (const [width, height] of [
       await chartWorld('Drift Lantern').hover();
       await expect(
         manifest.getByRole('button', {
-          name: 'Inspect event 3, Drift Lantern',
+          name: 'Inspect visit 2, Drift Lantern',
         }),
       ).toHaveAttribute('data-highlighted', 'true');
     }
@@ -172,26 +172,24 @@ for (const [width, height] of [
     await page.keyboard.press('Escape');
     await expect(chartWorld('Drift Lantern')).toBeFocused();
     await switchView('Manifest');
-    await expect(manifest.getByRole('listitem')).toHaveCount(6);
+    await expect(manifest.getByRole('listitem')).toHaveCount(4);
     await expect(manifest).toContainText('Scoop 40 t unrefined fuel');
     await destination.selectOption('orison');
     await expect(status).toContainText('7 jumps');
     await expect(status).toContainText('15 pc');
     await expect(status).toContainText('Cr4,000');
-    await expect(manifest.getByRole('listitem')).toHaveCount(14);
+    await expect(manifest.getByRole('listitem')).toHaveCount(8);
     const firstPurchase = manifest.getByRole('button', {
-      name: 'Inspect event 9, Serein',
+      name: 'Inspect visit 5, Serein',
     });
     const secondPurchase = manifest.getByRole('button', {
-      name: 'Inspect event 13, Serein',
+      name: 'Inspect visit 7, Serein',
     });
     await expect(firstPurchase).toContainText('0 → 20 t');
     await expect(secondPurchase).toContainText('40 → 60 t');
     await expect(secondPurchase).toContainText('Cr2,000');
     await secondPurchase.click();
-    await expect(inspector).toContainText(
-      'Events 8, 9, 12, 13 on your passage',
-    );
+    await expect(inspector).toContainText('Visits 5, 7 on your passage');
     await capture('selected-serein-inspection');
     if (width < 900) {
       await inspector
@@ -345,7 +343,7 @@ for (const [width, height] of [
     await destination.selectOption('aster');
     await expect(status).toContainText('0 jumps');
     await expect(manifest).toContainText('Already at your destination');
-    await expect(manifest).toContainText('60 t aboard');
+    await expect(manifest).toContainText('Arrival: 60 t');
     await destination.selectOption('');
     await expect(status).toContainText('Choose a destination');
     expect(errors).toEqual([]);
@@ -388,7 +386,7 @@ test('touch inspection, endpoint actions and responsive state retention', async 
     'cinder',
   );
   const returnEvent = page.getByRole('button', {
-    name: 'Inspect event 1, Drift Lantern',
+    name: 'Inspect visit 1, Drift Lantern',
   });
   await returnEvent.click();
   await page.setViewportSize({ width: 390, height: 844 });
@@ -496,7 +494,7 @@ test('desktop inspection remains visible and manifest selections restore focus',
   expect(bounds.top).toBeGreaterThanOrEqual(0);
   expect(bounds.bottom).toBeLessThanOrEqual(700);
   await inspector.getByRole('button', { name: 'Close world details' }).click();
-  const event = page.getByRole('button', { name: /^Inspect event 2,/ });
+  const event = page.getByRole('button', { name: /^Inspect visit 2,/ });
   await event.click();
   await inspector
     .getByRole('button', { name: 'Set origin', exact: true })

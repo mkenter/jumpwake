@@ -44,7 +44,7 @@ for (const [width, height] of [
     await expect(page.getByRole('status')).toContainText('Cr4,000');
     if (width < 900)
       await nav.getByRole('button', { name: 'Manifest' }).click();
-    await expect(manifest.getByRole('listitem')).toHaveCount(14);
+    await expect(manifest.getByRole('listitem')).toHaveCount(8);
     await page.screenshot({
       path: testInfo.outputPath(`calculated-${width}.png`),
     });

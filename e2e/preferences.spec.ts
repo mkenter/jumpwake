@@ -77,14 +77,16 @@ for (const width of [1440, 1024, 390]) {
     );
     await capture('fewer-jumps');
     await view('Manifest');
-    await expect(manifest.getByRole('listitem')).toHaveCount(4);
-    await expect(manifest).toContainText('Buy 60 t unrefined fuel at Cr100/t');
+    await expect(manifest.getByRole('listitem')).toHaveCount(3);
+    await expect(manifest).toContainText(
+      'Buy 60 t unrefined fuel from starport at Cr100/t',
+    );
     await expect(manifest).not.toContainText('Scoop');
     const purchase = manifest.getByRole('button', {
-      name: 'Inspect event 3, Brass Ledger',
+      name: 'Inspect visit 2, Brass Ledger',
     });
     await purchase.click();
-    await expect(inspector).toContainText('Events 2, 3 on your passage');
+    await expect(inspector).toContainText('Visits 2 on your passage');
     await page.keyboard.press('Escape');
     await expect(purchase).toBeFocused();
     await purchase.hover();
@@ -94,7 +96,7 @@ for (const width of [1440, 1024, 390]) {
     await expect(status).toContainText('3 jumps · 7 pc');
     await expect(status).toContainText('Cr0');
     await expect(page.locator('[data-highlighted="true"]')).toHaveCount(0);
-    await expect(manifest.getByRole('listitem')).toHaveCount(6);
+    await expect(manifest.getByRole('listitem')).toHaveCount(4);
     await view('Chart');
     expect(
       await chart
@@ -133,7 +135,7 @@ for (const width of [1440, 1024, 390]) {
     );
     await expect(status).toContainText('Cr10,700');
     await view('Manifest');
-    await expect(manifest).toContainText('13 t aboard');
+    await expect(manifest).toContainText('Arrival: 13 t');
     await origin.selectOption('cinder');
     await destination.selectOption('brass');
     await expect(status).toContainText('Destination unreachable');
@@ -161,12 +163,12 @@ test('touch selection preserves the mobile planner view and vessel', async ({
   await expect(page.locator('#passage-chart')).toBeHidden();
   await expect(
     page.locator('#passage-manifest').getByRole('listitem'),
-  ).toHaveCount(4);
+  ).toHaveCount(3);
   await page.getByRole('radio', { name: /^Lowest fuel cost/ }).tap();
   await expect(page.locator('#passage-chart')).toBeHidden();
   await expect(
     page.locator('#passage-manifest').getByRole('listitem'),
-  ).toHaveCount(6);
+  ).toHaveCount(4);
   await expect(page.getByLabel('Active vessel')).toContainText(
     '60/60 tons jump fuel',
   );
