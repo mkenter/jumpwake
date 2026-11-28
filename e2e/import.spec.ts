@@ -48,6 +48,7 @@ for (const width of [1440, 1024, 390]) {
       await expect(
         page.getByRole('heading', { name: /World 2 Full Name/ }),
       ).toBeVisible();
+      await page.getByText('Raw chart metadata').click();
       await expect(page.getByText('Test supplied remark')).toBeVisible();
       await page.getByRole('button', { name: 'Close world details' }).click();
       await page
@@ -246,3 +247,38 @@ test('inspection distinguishes unknown fuel and advisory zones', async ({
   await page.keyboard.press('Enter');
   await expect(page.getByText('Main world size: Belt')).toBeVisible();
 });
+
+for (const width of [1200, 390]) {
+  test(`imported profile and actions at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/');
+    await page.getByText('Chart bureau ·').click();
+    await page.getByLabel('Load navigation chart').setInputFiles({
+      name: 'profile.tab',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(
+        'Hex\tName\tUWP\tPBG\tRemarks\n0101\tProfile\tA867A99-C\t503\tSynthetic\n',
+      ),
+    });
+    await page.getByRole('button', { name: 'Chart', exact: true }).click();
+    await page.locator('[data-world="hex-0101"]').focus();
+    await page.keyboard.press('Enter');
+    const inspector =
+      width < 600
+        ? page.getByRole('dialog')
+        : page.getByRole('complementary', { name: 'World inspection' });
+    await expect(inspector).toContainText('Tech levelC · 12');
+    await expect(inspector).toContainText(
+      'Population multiplier5 · 5 × population base',
+    );
+    await expect(inspector).toContainText('Gas giants3 · 3');
+    await inspector.getByText('Raw chart metadata').click();
+    await expect(inspector.getByText('Synthetic')).toBeVisible();
+    await expect(
+      inspector.getByRole('button', { name: 'Set destination' }),
+    ).toBeEnabled();
+    await page.keyboard.press('Escape');
+    await expect(inspector).not.toBeVisible();
+    await expect(page.locator('[data-world="hex-0101"]')).toBeFocused();
+  });
+}

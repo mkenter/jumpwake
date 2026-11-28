@@ -140,3 +140,41 @@
 .sheet {
   overflow-wrap: anywhere;
 }
+
+.profile {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.profile h3 {
+  font:
+    18px Georgia,
+    serif;
+}
+.profile > p {
+  color: var(--muted);
+  font-size: 11px;
+}
+.profile dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+.profile dt,
+.metadata dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+.profile dd,
+.metadata dd {
+  margin: 2px 0 0;
+  font-size: 12px;
+}
+.metadata summary {
+  cursor: pointer;
+  font-size: 12px;
+}
+.metadata dl > div {
+  margin-top: 8px;
+}
