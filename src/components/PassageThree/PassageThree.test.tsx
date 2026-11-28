@@ -303,6 +303,28 @@ describe('applied vessel and passage integration', () => {
 });
 
 describe('passage preferences', () => {
+  it('describes each visit and its fuel transactions to keyboard users', async () => {
+    const { user } = await passage();
+    const origin = screen.getByRole('button', {
+      name: 'Inspect visit 1, Aster Quay',
+    });
+    const scooping = screen.getByRole('button', {
+      name: 'Inspect visit 2, Drift Lantern',
+    });
+    expect(origin).toHaveAccessibleDescription(/Arrival: .* Departure:/);
+    expect(scooping).toHaveAccessibleDescription(
+      /Arrival: .* Departure: .* Scoop .* fuel from gas giant · free.* → .* t/,
+    );
+    await user.click(screen.getByRole('radio', { name: /^Fewest jumps/ }));
+    const purchase = screen.getByRole('button', {
+      name: 'Inspect visit 2, Brass Ledger',
+    });
+    expect(purchase).toHaveAccessibleDescription(
+      /Arrival: .* Departure: .* Buy 60 t unrefined fuel from starport at Cr100\/t.* → .* t/,
+    );
+    expect(origin).not.toHaveAccessibleDescription(/Buy 60 t/);
+  });
+
   it('switches the whole itinerary, clears obsolete inspection and highlights, and returns to the default', async () => {
     const { user, manifest } = await passage();
     const economical = screen.getByRole('radio', { name: /^Lowest fuel cost/ });

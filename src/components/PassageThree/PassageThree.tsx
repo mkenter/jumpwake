@@ -4,7 +4,7 @@ import {
 } from '../../rules/classicTraveller1981/driveCatalog';
 import { exampleDriveCatalog } from '../../rules/classicTraveller1981/vesselDesign';
 import { createClassicTraveller1981Rules } from '../../rules/classicTraveller1981';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import clsx from 'clsx';
 import {
@@ -48,6 +48,7 @@ export function PassageThree({
 }: {
   catalog?: PrivateDriveCatalog | null;
 }) {
+  const visitDescriptionId = useId();
   const [restored] = useState(restoreChart);
   const [imported, setImported] = useState<ImportedChart | null>(restored);
   const [link] = useState(() => {
@@ -753,6 +754,16 @@ export function PassageThree({
                             highlight === visit.world && styles.highlightStop,
                           )}
                           aria-label={`Inspect visit ${index + 1}, ${worldById(visit.world).name}`}
+                          aria-describedby={[
+                            `${visitDescriptionId}-${index}-fuel`,
+                            ...visit.transactions.map(
+                              (_, n) =>
+                                `${visitDescriptionId}-${index}-transaction-${n}`,
+                            ),
+                            ...(passage.jumpCount === 0
+                              ? [`${visitDescriptionId}-${index}-stationary`]
+                              : []),
+                          ].join(' ')}
                           data-highlighted={highlight === visit.world}
                           aria-pressed={inspection?.id === visit.world}
                           onClick={(event) =>
@@ -771,12 +782,16 @@ export function PassageThree({
                               {worldById(visit.world).name}
                               <small>System visit</small>
                             </span>
-                            <span className={styles.stopDetails}>
+                            <span
+                              id={`${visitDescriptionId}-${index}-fuel`}
+                              className={styles.stopDetails}
+                            >
                               Arrival: {visit.arrival} t · Departure:{' '}
                               {visit.departure} t
                             </span>
                             {visit.transactions.map((event, n) => (
                               <span
+                                id={`${visitDescriptionId}-${index}-transaction-${n}`}
                                 className={clsx(
                                   styles.stopDetails,
                                   event.source === 'gas-giant'
@@ -790,7 +805,9 @@ export function PassageThree({
                               </span>
                             ))}
                             {passage.jumpCount === 0 && (
-                              <span>
+                              <span
+                                id={`${visitDescriptionId}-${index}-stationary`}
+                              >
                                 Already at your destination. No travel needed.
                               </span>
                             )}
